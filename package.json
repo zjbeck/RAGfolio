@@ -1,0 +1,50 @@
+{
+  "name": "ragfolio",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@ai-sdk/react": "4.0.17",
+    "@google/genai": "2.10.0",
+    "@langchain/core": "1.2.1",
+    "@langchain/google-genai": "2.2.0",
+    "@langchain/langgraph": "1.4.7",
+    "@upstash/ratelimit": "2.0.8",
+    "@upstash/redis": "1.38.0",
+    "ai": "7.0.16",
+    "bcryptjs": "3.0.3",
+    "github-slugger": "2.0.0",
+    "gray-matter": "4.0.3",
+    "jose": "6.2.3",
+    "langsmith": "0.7.16",
+    "mdast-util-to-string": "4.0.0",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-markdown": "10.1.0",
+    "rehype-slug": "6.0.0",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.2",
+    "@types/node": "22.20.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "4.3.2",
+    "tsx": "4.23.0",
+    "typescript": "5.9.3"
+  }
+}
