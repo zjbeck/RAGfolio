@@ -167,6 +167,37 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   at least once every 7 days and you stay in — the window end just moves in
   24 h steps instead of continuously). Switching to per-request sliding is a
   two-line change in `src/proxy.ts`: drop the `shouldReissue` check.
+- **Doc sources are baked into the corpus artifact** (`sources` map, keyed
+  `collection/docSlug`), read via the static import in `getDocSource` — never
+  `fs` at runtime. Same reason as the corpus static import: `process.cwd()` is
+  not the project root under every launcher (it was the Desktop under the
+  preview launcher) or on Vercel. Server-side only; never sent to the client
+  forest (which gets doc metadata, not bodies).
+- **Design tokens ship in Stage 5 as vanilla light + dark via
+  `prefers-color-scheme`** (media query). Stage 6 formalizes into a
+  toggle-driven vanilla/custom × light/dark with persistence. Components
+  reference `--` tokens only, so Stage 6 is a palette swap. Dimmed forest
+  nodes use dedicated `--dim-*` tokens (not opacity); AA verified at forest
+  render — dim-ink text 4.75:1 (light) / 7.43:1 (dark); the faint node border
+  is intentional (a not-retrieved node recedes and is identified by its
+  AA-passing label, not its border).
+- **Sequence sentences vs Pipeline data are separated by location**, which
+  enforces the differentiation rule structurally: explanatory prose lives in
+  `copy.ts` (`panel.sequence`), terse results data in code
+  (`components/panel/format.ts`). They can't drift into duplication.
+- **Forest cross-link labels reveal on node hover/select**, not on hovering
+  the thin SVG lines (unreliable). displayMode (always | onSelect | off)
+  controls line rendering; default always.
+- **The responsive panel breakpoint is `corpus.config.ts` `minViewportWidth`**
+  (not a Tailwind breakpoint), read via `useMediaQuery` (useSyncExternalStore).
+  At/above it: two-column with the landing→active flex-grow-spacer slide.
+  Below it: single column, panel stacked beneath the thread behind a "Show RAG
+  Panel" disclosure. Chat column steps 760→680px below 1536 (internal
+  constant).
+- **AI SDK v7 client**: `useChat` + `DefaultChatTransport({ api })` +
+  `sendMessage({ text })` + `status`. Panel events arrive as persistent
+  `data-ragEvent` parts (reconciled by the per-node `id` set server-side), read
+  from `message.parts` via `collectRagTurn` — no `onData` side channel needed.
 - Theme toggles live in the **top nav, right side** (documented in README).
 - Forest dimming uses **dedicated dimmed color tokens**, never raw opacity —
   raw 30% opacity would break AA contrast.
