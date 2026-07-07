@@ -10,7 +10,8 @@
     "build": "npm run ingest && next build",
     "start": "next start",
     "lint": "eslint",
-    "ingest": "tsx scripts/ingest.ts"
+    "ingest": "tsx scripts/ingest.ts",
+    "ask": "tsx scripts/ask.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "4.0.17",
