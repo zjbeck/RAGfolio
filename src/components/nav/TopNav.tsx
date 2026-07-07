@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { copy } from "@/copy";
 import { REPO_URL } from "@/lib/site";
+import { ThemeToggles } from "./ThemeToggles";
 
 export interface NavTab {
   slug: string;
@@ -58,6 +59,7 @@ export function TopNav({ tabs }: { tabs: NavTab[] }) {
         >
           <GitHubIcon />
         </a>
+        <ThemeToggles />
       </div>
     </header>
   );

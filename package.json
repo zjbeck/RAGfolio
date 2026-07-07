@@ -6,9 +6,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "predev": "tsx scripts/check-corpus.ts",
+    "predev": "tsx scripts/check-corpus.ts && tsx scripts/detect-theme.ts",
     "dev": "next dev",
-    "build": "npm run ingest && next build",
+    "build": "npm run ingest && tsx scripts/detect-theme.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "ingest": "tsx scripts/ingest.ts",

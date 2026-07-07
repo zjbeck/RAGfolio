@@ -201,10 +201,27 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
 - Theme toggles live in the **top nav, right side** (documented in README).
 - Forest dimming uses **dedicated dimmed color tokens**, never raw opacity —
   raw 30% opacity would break AA contrast.
-- Custom-theme detection: `next.config.ts` checks for
-  `src/styles/theme.custom.css` at build time and exposes
-  `NEXT_PUBLIC_HAS_CUSTOM_THEME`; the palette toggle renders disabled when
-  absent.
+- **Theming is toggle-driven** (`data-mode` + `data-palette` on `<html>`),
+  set before paint by a no-FOUC inline script in the layout (stored preference,
+  else system for mode). Preferences persist in localStorage. Two vanilla
+  palettes (light/dark) live in `globals.css`; the optional custom palette
+  lives in `src/styles/theme.custom.css` (ships as the "Verdant" green palette).
+  Toggles are in the nav (right); `ThemeToggles` reads the `<html>` attributes
+  via `useSyncExternalStore` + a MutationObserver (no state-in-effect).
+- **Custom-theme degradation is genuinely non-breaking**, via a generated
+  shim: `scripts/detect-theme.ts` (run in predev/prebuild) writes
+  `src/styles/theme.generated.css`, which `@import`s `theme.custom.css` only
+  if it exists, else is empty. globals.css imports the shim, so deleting the
+  custom theme never leaves a dangling `@import` — the build still succeeds and
+  the palette toggle disables. `next.config.ts` independently detects the file
+  to set `NEXT_PUBLIC_HAS_CUSTOM_THEME`.
+  ⚠️ `next.config.ts` anchors its existence check to the config file's own
+  directory via `import.meta` — NOT `process.cwd()`, which under the preview
+  launcher was the Desktop (third instance of this cwd trap; see the corpus
+  and doc-source notes).
+- **AA verified for all four palettes** at forest render (dimmed-node text,
+  the flagged requirement): vanilla light 4.75 / dark 7.43; custom light 5.24 /
+  dark 6.81 — all ≥ 4.5:1. Regenerate these if palettes change.
 - `@types/node` pinned to 22.x to match Vercel's Node runtime;
   `engines.node >= 20`.
 - `npm audit` reports 2 moderate advisories in next@16.2.10's own bundled

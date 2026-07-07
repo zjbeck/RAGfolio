@@ -1,0 +1,49 @@
+/*
+ * [PLACEHOLDER] Custom theme — the "Verdant" palette (light + dark).
+ *
+ * This file is OPTIONAL. When present, the vanilla/custom toggle is enabled
+ * and this palette becomes the second option; when absent, the toggle renders
+ * disabled and the site stays on vanilla (see the theming guide in the README).
+ * Detection is at build time — deleting this file is safe and never breaks the
+ * build (a generated shim, theme.generated.css, imports it only if it exists).
+ *
+ * Override the same token names globals.css defines. Layout and structure are
+ * NOT themeable — colors, and only colors, live here. Keep AA contrast in both
+ * modes, including the dimmed forest tokens.
+ */
+
+:root[data-palette="custom"] {
+  --canvas: #f5f8f3;
+  --surface: #ffffff;
+  --surface-2: #e9f0e5;
+  --ink: #16210f;
+  --muted: #47563c;
+  --line: #d8e2d0;
+  --line-strong: #c2d1b6;
+  --accent: #2e7d46;
+  --accent-soft: #d5efdb;
+  --on-accent: #ffffff;
+  --dim-ink: #5f6f54;
+  --dim-line: #cbd8c0;
+  --danger: #b0241c;
+
+  color-scheme: light;
+}
+
+:root[data-palette="custom"][data-mode="dark"] {
+  --canvas: #0c120a;
+  --surface: #141c11;
+  --surface-2: #1d271a;
+  --ink: #e9f1e4;
+  --muted: #9fb096;
+  --line: #26311f;
+  --line-strong: #37452e;
+  --accent: #56b06f;
+  --accent-soft: #163a20;
+  --on-accent: #0c120a;
+  --dim-ink: #93a389;
+  --dim-line: #37452e;
+  --danger: #f4877f;
+
+  color-scheme: dark;
+}

@@ -1,10 +1,14 @@
 @import "tailwindcss";
+/* Custom-theme shim: imports theme.custom.css if present, else empty. Generated
+ * by scripts/detect-theme.ts so deleting the custom theme never breaks the build. */
+@import "../styles/theme.generated.css";
 
 /*
- * Semantic design tokens. Stage 5 ships a single neutral (vanilla) palette in
- * light + dark; Stage 6 formalizes this into toggle-driven vanilla/custom ×
- * light/dark. Components reference these tokens only — never raw colors — so
- * Stage 6 is a palette swap, not a refactor.
+ * Semantic design tokens. Two palettes (vanilla + optional custom) × two modes
+ * (light + dark), selected by data-palette / data-mode attributes on <html>
+ * set by the no-FOUC script in the layout. Components reference these tokens
+ * only — never raw colors. The custom palette overrides the same names in
+ * theme.custom.css. Layout and structure are NOT themeable.
  *
  * Dimmed forest nodes use dedicated --dim-* tokens, NOT opacity: a 30%-opacity
  * node would fail AA contrast; these stay legible by design.
@@ -30,24 +34,22 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --canvas: #0b0b0d;
-    --surface: #161619;
-    --surface-2: #1f1f23;
-    --ink: #f4f4f5;
-    --muted: #a1a1aa;
-    --line: #2a2a30;
-    --line-strong: #3a3a42;
-    --accent: #60a5fa;
-    --accent-soft: #1e3a5f;
-    --on-accent: #0b0b0d;
-    --dim-ink: #9ca3af;
-    --dim-line: #3a3a42;
-    --danger: #f87171;
+:root[data-mode="dark"] {
+  --canvas: #0b0b0d;
+  --surface: #161619;
+  --surface-2: #1f1f23;
+  --ink: #f4f4f5;
+  --muted: #a1a1aa;
+  --line: #2a2a30;
+  --line-strong: #3a3a42;
+  --accent: #60a5fa;
+  --accent-soft: #1e3a5f;
+  --on-accent: #0b0b0d;
+  --dim-ink: #9ca3af;
+  --dim-line: #3a3a42;
+  --danger: #f87171;
 
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 @theme inline {
