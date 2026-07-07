@@ -86,6 +86,14 @@ export interface EmbeddedChunk extends Chunk {
   embedding: number[];
 }
 
+/** A document's raw source, for the doc page's raw view. */
+export interface DocSource {
+  /** The frontmatter text between the --- fences. */
+  frontmatterText: string;
+  /** The body exactly as the chunker saw it; chunk offsets index into this. */
+  body: string;
+}
+
 /** The single static JSON artifact emitted by `npm run ingest`. */
 export interface CorpusArtifact {
   embeddingModel: string;
@@ -93,4 +101,10 @@ export interface CorpusArtifact {
   collections: CollectionConfig[];
   docs: DocMeta[];
   chunks: EmbeddedChunk[];
+  /**
+   * Raw doc sources keyed by "collection/docSlug". Baked in at build time so
+   * doc pages never read the filesystem at runtime — the same reason the
+   * artifact itself is a static import (see CLAUDE.md). Read server-side only.
+   */
+  sources: Record<string, DocSource>;
 }

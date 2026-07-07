@@ -49,12 +49,15 @@ interface Frontmatter {
 function parseDoc(
   collection: string,
   filename: string
-): { meta: DocMeta; body: string } {
+): { meta: DocMeta; body: string; frontmatterText: string } {
   const filePath = path.join(CONTENT_DIR, collection, filename);
   const docSlug = filename.replace(/\.md$/, "");
   const where = `content/${collection}/${filename}`;
 
-  const { data, content } = matter(fs.readFileSync(filePath, "utf8"));
+  const raw = fs.readFileSync(filePath, "utf8");
+  const { data, content } = matter(raw);
+  const fence = raw.match(/^---\n([\s\S]*?)\n---/);
+  const frontmatterText = fence ? fence[1] : "";
   const fm = data as Frontmatter;
 
   if (typeof fm.title !== "string" || fm.title.trim() === "") {
@@ -111,6 +114,7 @@ function parseDoc(
       crossLinks,
     },
     body: content,
+    frontmatterText,
   };
 }
 
@@ -143,6 +147,7 @@ async function main(): Promise<void> {
   //    deterministic artifact ordering).
   const docs: DocMeta[] = [];
   const bodies = new Map<string, string>();
+  const sources: Record<string, { frontmatterText: string; body: string }> = {};
   for (const { slug } of corpusConfig.collections) {
     const files = fs
       .readdirSync(path.join(CONTENT_DIR, slug))
@@ -150,9 +155,11 @@ async function main(): Promise<void> {
       .sort();
     if (files.length === 0) fail(`content/${slug}/ contains no markdown files`);
     for (const file of files) {
-      const { meta, body } = parseDoc(slug, file);
+      const { meta, body, frontmatterText } = parseDoc(slug, file);
+      const key = `${meta.collection}/${meta.docSlug}`;
       docs.push(meta);
-      bodies.set(`${meta.collection}/${meta.docSlug}`, body);
+      bodies.set(key, body);
+      sources[key] = { frontmatterText, body };
     }
   }
 
@@ -233,6 +240,7 @@ async function main(): Promise<void> {
     collections: corpusConfig.collections,
     docs,
     chunks: embedded,
+    sources,
   };
 
   fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
