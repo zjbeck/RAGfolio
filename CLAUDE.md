@@ -55,12 +55,25 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   tokens per call; truncated dimensions (768/1536) are auto-normalized, so
   cosine similarity needs no post-processing.
 - `ChatGoogleGenerativeAI` (`@langchain/google-genai`) accepts a
-  `thinkingConfig` constructor option. Caution: on Gemini 3+ models,
-  `thinkingLevel` can take precedence over `thinkingBudget` — when budget is 0,
-  assert `thoughtsTokenCount` is absent from usage metadata (checked in the
-  Stage 3 CLI).
+  `thinkingConfig` constructor option, and it works on gemini-3.5-flash —
+  verified empirically both ways: budget 0 → no thought tokens; budget 512 →
+  raw SDK reports `thoughtsTokenCount: 295` for the same prompt. Two
+  accounting quirks (both verified 2026-07-06):
+  - The integration does **not** map thought tokens into
+    `output_token_details.reasoning`; they appear only inside `total_tokens`.
+    Recover them as `total − input − output` (see `usageOf` in
+    `src/lib/graph/nodes.ts`).
+  - In streaming, `usage_metadata` rides on content chunks and the final
+    chunk reports zeros — sum across the stream; and `streamUsage: true`
+    must be set or no chunk carries usage at all.
 - Gemini free-tier rate limits are per-project (AI Studio dashboard), not
   published statically. Ingest batches embedding calls and backs off on 429.
+- Observed empirically 2026-07-06: the free tier allows **5 requests/min for
+  gemini-3.5-flash** (`GenerateRequestsPerMinutePerProjectPerModel-FreeTier`).
+  One pipeline run costs 2–3 chat calls (Analyze, Grade, Answer), so roughly
+  two questions/minute on the free tier. Consequences: the eval harness must
+  pace runs; interactive chat fails fast on 429 by design (a 48 s in-request
+  retry would be worse UX than an honest error).
 
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).
@@ -79,6 +92,23 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
 - **Route is a real pass-through node** that writes `route: "answer" | "refuse"`
   to state (so the decision is visible in `updates` events), followed by a
   conditional edge that reads it.
+- **Graph node names are the spec's display names, capitalized** ("Analyze",
+  "Filter", …). LangGraph puts node names and state channels in one
+  namespace, and the state key `filter` (spec-named) collides with a
+  lowercase `filter` node.
+- **A filter that matches zero chunks is dropped, not obeyed** — recorded as
+  `filterRelaxed: true` in state (the panel shows it; nothing is silent).
+  Refusing an answerable question over a self-inflicted over-narrow filter
+  helps no one; honest refusals are for content that genuinely isn't there.
+- **Each LLM node reports its own token usage into state** (`usage` field,
+  spread-merged — safe because the graph is sequential). Structured-output
+  calls don't surface usage through the messages stream, and Gemini streams
+  put usage on content chunks (the final chunk reports zeros — sum across
+  the stream). `streamUsage: true` must be set on the model.
+- **Citations**: the Answer prompt requires inline `[n]` markers; they parse
+  into `{ ref, collection, docSlug, anchorId, label }`. If the model cites
+  nothing, the full retrieved set is cited — the answer was generated from
+  exactly that set, so the pills stay honest.
 - **Refuse is templated from authored copy, not LLM-generated** — zero
   fabrication by construction. It interpolates the collections/filter searched.
 - `src/generated/corpus.json` is a **gitignored build artifact**; `npm run
