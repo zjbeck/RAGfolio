@@ -6,12 +6,14 @@
     "node": ">=20"
   },
   "scripts": {
+    "predev": "tsx scripts/check-corpus.ts",
     "dev": "next dev",
     "build": "npm run ingest && next build",
     "start": "next start",
     "lint": "eslint",
     "ingest": "tsx scripts/ingest.ts",
-    "ask": "tsx scripts/ask.ts"
+    "ask": "tsx scripts/ask.ts",
+    "hash-password": "tsx scripts/hash-password.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "4.0.17",

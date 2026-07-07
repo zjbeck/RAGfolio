@@ -25,6 +25,18 @@ export const copy = {
   /** Single source is corpus.config.ts; re-exported here so components only import copy. */
   greeting: corpusConfig.greeting,
 
+  /** The password gate page. [PLACEHOLDER] — speak to your own reviewers. */
+  gate: {
+    title: "This portfolio is gated",
+    prompt:
+      "Enter the password you were given to view the site. Every page and API sits behind this gate.",
+    passwordLabel: "Password",
+    submitLabel: "Enter",
+    errorIncorrect: "That password isn't right — check for typos and try again.",
+    errorRateLimited: "Too many attempts — wait a minute and try again.",
+    errorGeneric: "Something went wrong on our side. Try again.",
+  },
+
   /**
    * Honest refusal: names what was searched and stops. Zero fabrication —
    * this text is templated, never model-generated.

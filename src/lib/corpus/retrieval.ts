@@ -1,5 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
+import corpusArtifact from "@/generated/corpus.json";
 import type { CorpusArtifact, EmbeddedChunk, FacetFilter } from "./types";
 
 /** A retrieved chunk: embedding stripped, similarity score attached. */
@@ -7,22 +6,16 @@ export interface ScoredChunk extends Omit<EmbeddedChunk, "embedding"> {
   score: number;
 }
 
-let cached: CorpusArtifact | null = null;
-
 /**
- * Load the ingest artifact, once per process. Retrieval is in-memory cosine
- * similarity over this array — there is deliberately no vector database.
+ * The ingest artifact, resolved at bundle time — not read from disk at
+ * runtime. This survives Vercel's serverless bundling (which traces static
+ * imports into the function bundle) in a way runtime fs/path resolution
+ * relative to process.cwd() or __dirname does not. Retrieval is in-memory
+ * cosine similarity over this array — there is deliberately no vector
+ * database.
  */
 export function loadCorpus(): CorpusArtifact {
-  if (cached) return cached;
-  const artifactPath = path.resolve(process.cwd(), "src/generated/corpus.json");
-  if (!fs.existsSync(artifactPath)) {
-    throw new Error(
-      "src/generated/corpus.json not found — run `npm run ingest` first."
-    );
-  }
-  cached = JSON.parse(fs.readFileSync(artifactPath, "utf8")) as CorpusArtifact;
-  return cached;
+  return corpusArtifact as CorpusArtifact;
 }
 
 /** Keep chunks whose facets match every key of the filter. Null/empty filter keeps all. */
