@@ -47,7 +47,13 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   Answer node's budget is a config value (default 0).
 - Embeddings: **`gemini-embedding-2`** is the current recommended model
   (verified against live docs 2026-07-06; `gemini-embedding-001` is marked
-  for migration). We request 768-dim output.
+  for migration). We request 768-dim output. Three details verified against
+  live docs: it does **not** support `taskType` — asymmetric retrieval
+  formatting rides in the prompt text (document side:
+  `title: {title} | text: {content}`; query side:
+  `task: question answering | query: {content}`); input is limited to 8,192
+  tokens per call; truncated dimensions (768/1536) are auto-normalized, so
+  cosine similarity needs no post-processing.
 - `ChatGoogleGenerativeAI` (`@langchain/google-genai`) accepts a
   `thinkingConfig` constructor option. Caution: on Gemini 3+ models,
   `thinkingLevel` can take precedence over `thinkingBudget` — when budget is 0,
@@ -58,6 +64,10 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
 
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).
+- The spec places the greeting in corpus.config.ts but also says all
+  microcopy lives in the copy module. Resolution: **corpus.config.ts is the
+  single source for the greeting; `src/copy.ts` re-exports it** — components
+  only ever import copy.
 - Embeddings are called via `@google/genai` directly (ingest + query time).
   Chat goes through `@langchain/google-genai` so tokens flow through the
   graph's stream.
