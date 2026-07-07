@@ -39,6 +39,21 @@ Consult current docs before writing integration code — training data is stale.
 Every dependency in `package.json` is pinned exact — no `^` or `~`. When adding
 a package, resolve the current version (`npm view <pkg> version`) and pin it.
 
+### Anti-stuck rules
+1. **An interrupted edit may not have landed.** Re-read the file before
+   re-editing it — never assume your last edit applied.
+2. **Two failed attempts at the same fix → stop.** List 2–3 alternatives with
+   tradeoffs, pick the most boring one, or escalate to the user.
+3. **Never poll background tasks.** Wait for the completion notification
+   instead of checking in on a loop.
+4. **On 429s, back off to the quota window.** Batch remaining API-dependent
+   verifications together at the end of the stage instead of retrying inline
+   one at a time.
+5. **Prefer bundler/framework-native mechanisms over runtime fs/path logic**
+   (e.g., a static JSON import over `fs.readFileSync` against a
+   `process.cwd()`- or `__dirname`-resolved path) — they survive bundling and
+   deployment environments that runtime path math doesn't.
+
 ## Verified API facts
 - Chat model: **`gemini-3.5-flash`** (stable). Thinking is disableable —
   empirically verified: `generationConfig.thinkingConfig.thinkingBudget: 0`
@@ -114,11 +129,44 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
 - `src/generated/corpus.json` is a **gitignored build artifact**; `npm run
   build` runs ingest first, so `GEMINI_API_KEY` must be present at build time
   (on Vercel: a project env var covers build and runtime).
+- **The corpus is loaded via a static import**
+  (`import corpus from "@/generated/corpus.json"` in
+  `src/lib/corpus/retrieval.ts`), not `fs.readFileSync` against a
+  `process.cwd()`- or `__dirname`-resolved path. Bundler-resolved beats
+  runtime path math: it survives Vercel's serverless bundling (which traces
+  static imports into the function bundle), where both `process.cwd()` and
+  `__dirname` are unreliable. Consequence: **re-running `npm run ingest`
+  requires a dev-server restart** to pick up the new artifact — it's a
+  build-time artifact by design, not hot-reloaded data. A `predev` script
+  (`scripts/check-corpus.ts`) fails fast with a clear message if the
+  artifact doesn't exist yet, since a missing static import otherwise
+  surfaces as an opaque bundler error instead of an actionable one.
 - **Auth split:** `src/proxy.ts` only verifies the signed session cookie
   (jose JWT) and redirects to `/gate`; the `POST /api/auth` route handler does
-  the bcryptjs hash compare and issues the cookie. Sliding 7-day expiry —
-  re-issued when older than 24 h. Fail closed: `SITE_PASSWORD_HASH` set but
-  `SESSION_SECRET` missing → explicit error, never silently public.
+  the bcryptjs hash compare and issues the cookie. Fail closed:
+  `SITE_PASSWORD_HASH` set but `SESSION_SECRET` missing → explicit error,
+  never silently public.
+- **`SITE_PASSWORD_HASH` is stored base64-encoded, not as the raw bcrypt
+  hash.** Verified empirically 2026-07-07: Next's env loader expands
+  `$identifier` sequences (identifier starting with a letter/underscore) in
+  `.env.local` values — even quoted ones — to that variable's value, empty if
+  undefined. A bcrypt hash's `$2b$12$` prefix survives (digits can't start an
+  identifier) but the salt/hash body after the third `$` starts with a letter
+  often enough to get silently deleted. Shell-style `$$`-doubling does **not**
+  reliably fix this — outcome depends on what follows each `$` in the
+  specific hash. Base64 has no `$` at all, so nothing gets matched, for any
+  hash. `scripts/hash-password.ts` outputs the encoded form directly; decode
+  with `decodePasswordHash` (`src/lib/auth/password-hash.ts`) at the one call
+  site that needs the real hash (`POST /api/auth`) — `proxy.ts` never touches
+  the hash value itself, only its presence.
+- **Sliding expiry is throttled to daily re-issue** (not per-request). The
+  spec says "7-day sliding expiry" without a cadence; this is a deliberate
+  choice, not doc-driven. Strict per-request sliding re-signs the JWT and
+  sets a cookie on every response for no security gain; re-issuing once the
+  token is >24 h old keeps the sliding guarantee at day granularity (visit
+  at least once every 7 days and you stay in — the window end just moves in
+  24 h steps instead of continuously). Switching to per-request sliding is a
+  two-line change in `src/proxy.ts`: drop the `shouldReissue` check.
 - Theme toggles live in the **top nav, right side** (documented in README).
 - Forest dimming uses **dedicated dimmed color tokens**, never raw opacity —
   raw 30% opacity would break AA contrast.
