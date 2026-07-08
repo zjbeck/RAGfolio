@@ -13,6 +13,7 @@
     "lint": "eslint",
     "ingest": "tsx scripts/ingest.ts",
     "ask": "tsx scripts/ask.ts",
+    "eval": "tsx scripts/eval.ts",
     "hash-password": "tsx scripts/hash-password.ts"
   },
   "dependencies": {

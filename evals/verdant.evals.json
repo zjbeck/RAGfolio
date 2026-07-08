@@ -1,0 +1,66 @@
+{
+  "description": "Example evals for the Verdant corpus. Three kinds of case: per-collection retrieval hits, filter-specific queries (Analyze should extract a facet), and out-of-scope questions that MUST refuse. Replace these with cases for your own corpus. Expectations: `retrieve` lists doc ids (collection/docSlug) that must appear among retrieved chunks; `filter` is a partial facet match that Analyze must extract; `refuse` requires the pipeline to route to Refuse.",
+  "cases": [
+    {
+      "id": "guides/automated-misting",
+      "question": "How do I switch a misting schedule from fixed to adaptive?",
+      "expect": { "retrieve": ["guides/automated-misting"] }
+    },
+    {
+      "id": "api-reference/authentication",
+      "question": "How do I rotate an API key without downtime?",
+      "expect": { "retrieve": ["api-reference/authentication"] }
+    },
+    {
+      "id": "concepts/scheduling-engine",
+      "question": "How does adaptive watering decide when to run?",
+      "expect": { "retrieve": ["concepts/scheduling-engine"] }
+    },
+    {
+      "id": "troubleshooting/sensor-drift",
+      "question": "My soil-moisture readings slowly stopped matching reality. What's wrong?",
+      "expect": { "retrieve": ["troubleshooting/sensor-drift-and-calibration"] }
+    },
+    {
+      "id": "release-notes/v2-5",
+      "question": "What changed for adaptive scheduling in release 2.5?",
+      "expect": { "retrieve": ["release-notes/v2-5"] }
+    },
+    {
+      "id": "concepts/microclimate",
+      "question": "Why does a stale sensor drop out of the zone score?",
+      "expect": { "retrieve": ["concepts/microclimate-model"] }
+    },
+    {
+      "id": "filter/watering-api",
+      "question": "In the watering API, how do I trigger a manual run?",
+      "expect": {
+        "filter": { "module": "watering" },
+        "retrieve": ["api-reference/watering-api"]
+      }
+    },
+    {
+      "id": "filter/release-notes",
+      "question": "In the release notes, when did webhook signature v2 ship?",
+      "expect": {
+        "filter": { "doc_type": "release-notes" },
+        "retrieve": ["release-notes/v2-5"]
+      }
+    },
+    {
+      "id": "refuse/sourdough",
+      "question": "What's the best recipe for sourdough bread?",
+      "expect": { "refuse": true }
+    },
+    {
+      "id": "refuse/pricing",
+      "question": "How much does a Verdant Hub cost, and what plans are available?",
+      "expect": { "refuse": true }
+    },
+    {
+      "id": "refuse/people",
+      "question": "Who founded Verdant and where is the company headquartered?",
+      "expect": { "refuse": true }
+    }
+  ]
+}
