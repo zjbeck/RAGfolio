@@ -203,7 +203,14 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   raw 30% opacity would break AA contrast.
 - **Theming is toggle-driven** (`data-mode` + `data-palette` on `<html>`),
   set before paint by a no-FOUC inline script in the layout (stored preference,
-  else system for mode). Preferences persist in localStorage. Two vanilla
+  else system for mode). Preferences persist in localStorage. `<html>` carries
+  `suppressHydrationWarning` — the script mutates its attributes before React
+  hydrates, so client and server markup differ by design (the standard
+  next-themes pattern). Without it, the console shows a legitimate hydration
+  mismatch on `<html>` every load; the app still hydrates and is interactive,
+  but a stray console error is exactly the kind of thing the docs-team
+  reviewers would flag. Caught in the live-chat pass, since the script
+  postdates the last live test. Two vanilla
   palettes (light/dark) live in `globals.css`; the optional custom palette
   lives in `src/styles/theme.custom.css` (ships as the "Verdant" green palette).
   Toggles are in the nav (right); `ThemeToggles` reads the `<html>` attributes

@@ -28,6 +28,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // The no-FOUC script sets data-mode / data-palette on <html> before
+      // React hydrates, so the client attributes won't match the server HTML.
+      // This is the sanctioned use of suppressHydrationWarning (scoped to this
+      // element's own attributes, not its subtree).
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-canvas text-ink">
