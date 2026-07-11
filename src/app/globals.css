@@ -80,6 +80,24 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/*
+ * Explicit keyboard-focus ring, site-wide (pre-ship audit E2: no explicit
+ * focus-visible styling anywhere — controls relied entirely on inconsistent
+ * browser defaults, invisible on at least the Send button). One rule covers
+ * every current and future focusable element — no per-component classes to
+ * keep in sync — and it's token-driven, so it's already verified AA in all
+ * four palettes: --accent vs. --canvas/--surface is ≥4.74:1 everywhere
+ * (vanilla light 4.95, vanilla dark 7.73, custom light 4.74, custom dark
+ * 7.08), comfortably past the 3:1 WCAG 1.4.11 floor for a non-text UI
+ * indicator. :focus-visible only ever matches keyboard-driven focus, so this
+ * never appears on a mouse click.
+ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* Citation deep-link highlight (stretch goal): brief flash on the cited chunk. */
 @keyframes ragfolio-cite-flash {
   from {

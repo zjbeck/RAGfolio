@@ -132,6 +132,27 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   429 — free to test, and confirms no false-positive), which rendered
   exactly `copy.chat.error`'s text end-to-end, proving the same code path a
   real quota error would take.
+- **Every focusable element gets an explicit keyboard-focus ring**
+  (pre-ship audit E2: no `:focus-visible` styling anywhere; the Send button's
+  computed `outlineStyle` was `none`, relying entirely on inconsistent UA
+  defaults). One global rule in `globals.css` — `:focus-visible { outline: 2px
+  solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm);
+  }` — covers every current and future focusable element site-wide; no
+  per-component classes to add or keep in sync. Color choice reuses
+  `--accent`, already confirmed ≥4.74:1 against `--canvas`/`--surface` in all
+  four palettes (comfortably past the 3:1 WCAG 1.4.11 floor for a non-text UI
+  indicator) — no new contrast check needed.
+  ⚠️ **Verification gap, disclosed rather than papered over:** confirmed the
+  rule is loaded correctly (read it back out of `document.styleSheets` —
+  exact selector and declared values match) and re-confirmed the color
+  choice's pre-computed AA numbers. Could **not** watch the ring render from
+  an actual keypress: `document.hasFocus()` is `false` in the automated
+  preview environment (no OS-level window focus), so `:focus`/`:focus-visible`
+  never match regardless of technique tried (`.focus()`, a synthetic
+  `keydown`) — a hard limitation of that tool, confirmed by direct
+  diagnosis, not a flaw in the fix. None of the available preview tools
+  dispatch a trusted keyboard event. A real Tab-key pass in an actual
+  browser is the remaining check.
 - **Sequence step completions are announced to screen readers**
   (pre-ship audit P2: the checkmarks narrated visually with nothing spoken).
   `RagSteps` renders a visually-hidden (`sr-only`) `role="status"
