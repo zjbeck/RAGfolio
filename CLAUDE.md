@@ -132,6 +132,20 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   429 — free to test, and confirms no false-positive), which rendered
   exactly `copy.chat.error`'s text end-to-end, proving the same code path a
   real quota error would take.
+- **The active thread states plainly that it has no cross-turn memory**
+  (pre-ship audit P2: a multi-message thread UI implies conversational
+  context the pipeline doesn't carry — `questionFrom` in the chat route only
+  ever reads the *last* user message; Analyze/Retrieve/Answer never see
+  earlier turns). Deliberately **not** fixed by threading history into the
+  graph: the build spec's state shape, the CLI, and the eval harness are all
+  built around one question → one traced six-node run, and real conversational
+  memory would need a query-rewriting step, growing per-turn token cost, and
+  a rethink of what the RAG Panel shows per "turn" — a feature addition, not
+  a remediation-pass fix. Instead, `copy.activeThread.footnote` ("Questions
+  are answered independently — include full context in each one.") renders
+  under the composer/chips once active, consistent with the project's
+  honest-by-construction stance elsewhere (refusals name what was searched;
+  this names what isn't remembered). Verified live in-browser.
 - **Client disconnect aborts the pipeline** (pre-ship audit P2: an abandoned
   tab burned every remaining node's Gemini call). `POST /api/chat` passes
   `request.signal` into `graph.stream()`; every Gemini-calling node

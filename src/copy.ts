@@ -53,6 +53,16 @@ export const copy = {
       "Answers are generated only from the portfolio corpus and always cite sources.",
   },
 
+  /**
+   * Active chat composition (after the first question). The pipeline
+   * processes each question independently — no conversation history reaches
+   * Analyze, Retrieve, or Answer — so this says so plainly rather than
+   * letting a multi-message thread imply memory it doesn't have.
+   */
+  activeThread: {
+    footnote: "Questions are answered independently — include full context in each one.",
+  },
+
   /** Chat input and thread. */
   input: {
     placeholder: "Ask a question about the docs…",

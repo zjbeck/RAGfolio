@@ -60,6 +60,12 @@ export function ChatApp({ forest }: { forest: ForestData }) {
   const errorNote = status === "error" && (
     <p className="text-sm text-danger">{error?.message || copy.chat.error}</p>
   );
+  // The pipeline has no memory across turns — Analyze/Retrieve/Answer only
+  // ever see the latest question. Said plainly rather than left for the
+  // multi-message thread to imply otherwise.
+  const activeFootnote = (
+    <p className="text-center text-xs text-muted">{copy.activeThread.footnote}</p>
+  );
 
   // ── Narrow, active: single column; panel stacks beneath the thread. ─────────
   if (active && !wide) {
@@ -88,6 +94,7 @@ export function ChatApp({ forest }: { forest: ForestData }) {
           {errorNote}
           {composer}
           {chips}
+          {activeFootnote}
         </div>
       </div>
     );
@@ -118,6 +125,7 @@ export function ChatApp({ forest }: { forest: ForestData }) {
               {errorNote}
               {composer}
               {chips}
+              {activeFootnote}
             </div>
           </>
         ) : (
