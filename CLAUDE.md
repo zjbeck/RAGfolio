@@ -277,6 +277,28 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
 - Standalone scripts run with tsx: `scripts/ingest.ts`, `scripts/ask.ts`,
   `scripts/eval.ts`.
 
+- **"No Upstash configured" is not truly a no-op for `/api/auth`** — a
+  deliberate exception to the "absent → no limiting" rule stated above for
+  chat. `checkRateLimit("auth", …)` falls back to an in-memory sliding-window
+  limiter (5/min/IP, same threshold as the Upstash-configured case) when
+  Upstash isn't set. Reason: bcrypt (cost 12) is real synchronous CPU work,
+  so an unauthenticated flood of `/api/auth` POSTs is a local CPU-DoS vector
+  regardless of whether the password is ever guessed — "unconfigured" should
+  never quietly mean "unprotected" for the one endpoint that hashes on every
+  request. This fallback is weaker than Upstash on purpose (in-memory, so
+  per-instance and reset on cold start) and isn't a substitute for it on a
+  real multi-instance deployment — it exists so an unconfigured deployment
+  fails safe rather than wide open. Chat has no equivalent fallback: the
+  upstream Gemini API's own quota is the backstop there, and there's no
+  cheap local operation to protect.
+  ⚠️ **Exactly one Upstash var set (not zero, not both) throws at module load**
+  rather than silently falling back — a partial config looks configured but
+  would otherwise quietly disable limiting, which is worse than an explicit
+  failure. Verified live: 8-request burst against `/api/auth` with no
+  Upstash configured → 5× 401 (real bcrypt ran), then 429; setting only
+  `UPSTASH_REDIS_REST_URL` → 500 on first request, log shows the throw firing
+  at module evaluation, not some unrelated failure.
+
 ## Don'ts
 - No vector database — build-time ingest → static JSON → in-memory cosine.
 - No Python, no second service.
