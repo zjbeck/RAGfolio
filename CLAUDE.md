@@ -115,6 +115,23 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   `filterRelaxed: true` in state (the panel shows it; nothing is silent).
   Refusing an answerable question over a self-inflicted over-narrow filter
   helps no one; honest refusals are for content that genuinely isn't there.
+- **Client disconnect aborts the pipeline** (pre-ship audit P2: an abandoned
+  tab burned every remaining node's Gemini call). `POST /api/chat` passes
+  `request.signal` into `graph.stream()`; every Gemini-calling node
+  (`analyze`, `retrieve`, `grade`, `answer`) takes an optional
+  `config?: RunnableConfig` second parameter and forwards it (or
+  `config?.signal`, for `embedText`) into its call. Verified empirically:
+  killing the client connection ~5s into a normal ~50–57s run made the
+  server-logged request duration `5.0s`, not the full pipeline length — later
+  nodes' calls never fired. One important caveat, from `@google/genai`'s own
+  docs: abort is client-side only and does **not** cancel billing for a call
+  already in flight when the signal fires — the real saving is every
+  *subsequent* node's call never starting, not a refund on the current one.
+  Also verified empirically: Next's `request.signal` fires with a
+  `ResponseAborted` error (named in
+  `next/dist/server/web/spec-extension/adapters/next-request.js`), not the
+  generic DOM `AbortError` — the route's `onError` checks both names so an
+  abandoned tab logs as a clean one-liner instead of a scary stack trace.
 - **Each LLM node reports its own token usage into state** (`usage` field,
   spread-merged — safe because the graph is sequential). Structured-output
   calls don't surface usage through the messages stream, and Gemini streams

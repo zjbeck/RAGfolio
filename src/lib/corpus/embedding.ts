@@ -42,14 +42,23 @@ function isRateLimit(error: unknown): boolean {
   return message.includes("429") || message.includes("RESOURCE_EXHAUSTED");
 }
 
-/** Embed a single text, retrying on rate limits with exponential backoff. */
-export async function embedText(text: string): Promise<number[]> {
+/**
+ * Embed a single text, retrying on rate limits with exponential backoff.
+ * `signal` is optional (ingest's build-time calls have no request to cancel
+ * against) — when given, it's forwarded to the SDK. Per @google/genai's own
+ * docs, abort is client-side only: it stops us from waiting on a response
+ * already in flight, but does not cancel billing for that specific call. Its
+ * real value here is `throwIfAborted()` below, which skips starting the call
+ * at all once a caller (the Retrieve node) already knows the client is gone.
+ */
+export async function embedText(text: string, signal?: AbortSignal): Promise<number[]> {
   for (let attempt = 1; ; attempt++) {
+    signal?.throwIfAborted();
     try {
       const response = await getClient().models.embedContent({
         model: EMBEDDING_MODEL,
         contents: text,
-        config: { outputDimensionality: EMBEDDING_DIMENSIONS },
+        config: { outputDimensionality: EMBEDDING_DIMENSIONS, abortSignal: signal },
       });
       const values = response.embeddings?.[0]?.values;
       if (!values || values.length !== EMBEDDING_DIMENSIONS) {

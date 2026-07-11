@@ -12,6 +12,7 @@ import {
   topK,
 } from "@/lib/corpus/retrieval";
 import type { AIMessage, AIMessageChunk } from "@langchain/core/messages";
+import type { RunnableConfig } from "@langchain/core/runnables";
 import type { FacetFilter } from "@/lib/corpus/types";
 import type { Citation, NodeUsage, PipelineStateType } from "./state";
 
@@ -81,7 +82,10 @@ function buildAnalyzeSchema() {
   });
 }
 
-export async function analyze(state: PipelineStateType): Promise<StateUpdate> {
+export async function analyze(
+  state: PipelineStateType,
+  config?: RunnableConfig
+): Promise<StateUpdate> {
   const schema = buildAnalyzeSchema();
   const vocabulary = Object.entries(corpusConfig.facets)
     .map(([key, values]) => `- ${key}: ${values.join(", ")}`)
@@ -89,21 +93,24 @@ export async function analyze(state: PipelineStateType): Promise<StateUpdate> {
 
   const result = await chatModel(0)
     .withStructuredOutput(schema, { includeRaw: true })
-    .invoke([
-      {
-        role: "system",
-        content:
-          `You classify questions asked of a documentation site and extract a metadata filter.\n` +
-          `Available facets and their only allowed values:\n${vocabulary}\n\n` +
-          `Filters narrow the search — a wrong filter hides the right answer. Set a facet ` +
-          `only when the question EXPLICITLY names it: a subject-matter facet needs the ` +
-          `subject named ("soil-moisture sensor" → module: sensors), and doc_type needs a ` +
-          `document kind named ("in the release notes", "the API reference for…"). ` +
-          `Question phrasing is not a doc_type: "how do I…" does NOT mean guide. ` +
-          `When in doubt, null — retrieval over everything beats retrieval over the wrong slice.`,
-      },
-      { role: "user", content: state.question },
-    ]);
+    .invoke(
+      [
+        {
+          role: "system",
+          content:
+            `You classify questions asked of a documentation site and extract a metadata filter.\n` +
+            `Available facets and their only allowed values:\n${vocabulary}\n\n` +
+            `Filters narrow the search — a wrong filter hides the right answer. Set a facet ` +
+            `only when the question EXPLICITLY names it: a subject-matter facet needs the ` +
+            `subject named ("soil-moisture sensor" → module: sensors), and doc_type needs a ` +
+            `document kind named ("in the release notes", "the API reference for…"). ` +
+            `Question phrasing is not a doc_type: "how do I…" does NOT mean guide. ` +
+            `When in doubt, null — retrieval over everything beats retrieval over the wrong slice.`,
+        },
+        { role: "user", content: state.question },
+      ],
+      config
+    );
 
   // Drop nulls; an empty filter is recorded as null (no filter applied).
   const entries = Object.entries(result.parsed.filter).filter(
@@ -144,11 +151,17 @@ export async function filterChunks(
 // ── 3. Retrieve ──────────────────────────────────────────────────────────────
 // Cosine top-k within the filtered set.
 
-export async function retrieve(state: PipelineStateType): Promise<StateUpdate> {
+export async function retrieve(
+  state: PipelineStateType,
+  config?: RunnableConfig
+): Promise<StateUpdate> {
   const corpus = loadCorpus();
   const candidates = applyFacetFilter(corpus.chunks, state.filter);
   if (candidates.length === 0) return { chunks: [] };
-  const queryEmbedding = await embedText(formatQueryForEmbedding(state.question));
+  const queryEmbedding = await embedText(
+    formatQueryForEmbedding(state.question),
+    config?.signal
+  );
   return { chunks: topK(queryEmbedding, candidates, corpusConfig.k) };
 }
 
@@ -164,7 +177,10 @@ const gradeSchema = z.object({
     ),
 });
 
-export async function grade(state: PipelineStateType): Promise<StateUpdate> {
+export async function grade(
+  state: PipelineStateType,
+  config?: RunnableConfig
+): Promise<StateUpdate> {
   if (state.chunks.length === 0) return { verdict: "insufficient" };
 
   const excerpts = state.chunks
@@ -173,19 +189,22 @@ export async function grade(state: PipelineStateType): Promise<StateUpdate> {
 
   const result = await chatModel(0)
     .withStructuredOutput(gradeSchema, { includeRaw: true })
-    .invoke([
-      {
-        role: "system",
-        content:
-          `You judge whether documentation excerpts can answer a question. ` +
-          `"sufficient" means the excerpts themselves contain the needed information — ` +
-          `not that they are merely related to the topic.`,
-      },
-      {
-        role: "user",
-        content: `Question: ${state.question}\n\nExcerpts:\n\n${excerpts}`,
-      },
-    ]);
+    .invoke(
+      [
+        {
+          role: "system",
+          content:
+            `You judge whether documentation excerpts can answer a question. ` +
+            `"sufficient" means the excerpts themselves contain the needed information — ` +
+            `not that they are merely related to the topic.`,
+        },
+        {
+          role: "user",
+          content: `Question: ${state.question}\n\nExcerpts:\n\n${excerpts}`,
+        },
+      ],
+      config
+    );
 
   return {
     verdict: result.parsed.verdict,
@@ -214,7 +233,10 @@ function citationLabel(chunk: PipelineStateType["chunks"][number], title: string
 }
 
 export function makeAnswer(thinkingBudget: number) {
-  return async function answer(state: PipelineStateType): Promise<StateUpdate> {
+  return async function answer(
+    state: PipelineStateType,
+    config?: RunnableConfig
+  ): Promise<StateUpdate> {
     const corpus = loadCorpus();
     const titles = new Map(
       corpus.docs.map((d) => [`${d.collection}/${d.docSlug}`, d.title])
@@ -229,20 +251,23 @@ export function makeAnswer(thinkingBudget: number) {
       })
       .join("\n\n");
 
-    const stream = await chatModel(thinkingBudget).stream([
-      {
-        role: "system",
-        content:
-          `You answer questions about ${corpusConfig.siteName} using ONLY the numbered ` +
-          `sources provided. Cite as you go: put [n] immediately after each claim the ` +
-          `source supports. Never state anything the sources don't say. Answer in ` +
-          `concise markdown; no preamble.`,
-      },
-      {
-        role: "user",
-        content: `Question: ${state.question}\n\nSources:\n\n${sources}`,
-      },
-    ]);
+    const stream = await chatModel(thinkingBudget).stream(
+      [
+        {
+          role: "system",
+          content:
+            `You answer questions about ${corpusConfig.siteName} using ONLY the numbered ` +
+            `sources provided. Cite as you go: put [n] immediately after each claim the ` +
+            `source supports. Never state anything the sources don't say. Answer in ` +
+            `concise markdown; no preamble.`,
+        },
+        {
+          role: "user",
+          content: `Question: ${state.question}\n\nSources:\n\n${sources}`,
+        },
+      ],
+      config
+    );
 
     let text = "";
     // Usage rides on content chunks (the final chunk reports zeros) — sum

@@ -106,15 +106,32 @@ export async function POST(request: Request): Promise<Response> {
 
   const stream = createUIMessageStream<RagfolioUIMessage>({
     // The SDK masks stream errors by default (good — no internals leak to the
-    // client). Keep the real error visible in server logs.
+    // client). Keep the real error visible in server logs — and distinguish
+    // an abandoned client from a genuine failure, so logs don't cry wolf on
+    // every closed tab. Verified empirically which error this actually is:
+    // Next's own request.signal fires with a `ResponseAborted` (name set in
+    // next/dist/server/web/spec-extension/adapters/next-request.js), not the
+    // DOM AbortError a raw AbortController would produce — check both, since
+    // a signal check inside LangChain's own call chain could throw either.
+    // Per @google/genai's own docs, aborting is client-side only and doesn't
+    // cancel billing for a call already in flight — what it DOES do is stop
+    // the graph from starting any *further* node's call once the disconnect
+    // is detected (see request.signal below).
     onError: (error) => {
+      const isAbort =
+        error instanceof Error &&
+        (error.name === "AbortError" || error.name === "ResponseAborted");
+      if (isAbort) {
+        console.log("chat pipeline aborted (client disconnected)");
+        return "aborted";
+      }
       console.error("chat pipeline error:", error);
       return "The pipeline hit an error. Try again; if it persists, check the server logs.";
     },
     execute: async ({ writer }) => {
       const graphStream = await graph.stream(
         { question },
-        { streamMode: ["updates", "messages"] as const }
+        { streamMode: ["updates", "messages"] as const, signal: request.signal }
       );
 
       const TEXT_ID = "answer";
