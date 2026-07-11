@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   SESSION_COOKIE,
   sessionCookieOptions,
+  sessionSecretError,
   shouldReissue,
   signSession,
   verifySession,
@@ -12,10 +13,11 @@ import {
  * job, Node runtime; flagged in CLAUDE.md.)
  *
  * - SITE_PASSWORD_HASH unset → the site is public and this is a pass-through.
- * - Hash set + SESSION_SECRET set → every route below except the gate itself
- *   requires a valid session cookie; pages redirect to /gate, APIs get 401.
- * - Hash set + SESSION_SECRET missing → FAIL CLOSED with an explicit error.
- *   Never silently public.
+ * - Hash set + SESSION_SECRET set (and long enough) → every route below
+ *   except the gate itself requires a valid session cookie; pages redirect to
+ *   /gate, APIs get 401.
+ * - Hash set + SESSION_SECRET missing or too short → FAIL CLOSED with an
+ *   explicit error. Never silently public, and never silently forgeable.
  *
  * Only the cookie check lives here; the bcrypt compare happens in
  * POST /api/auth (this is an optimistic check, per Next's own guidance).
@@ -23,19 +25,27 @@ import {
 
 const GATE_EXEMPT = ["/gate", "/api/auth"];
 
+function configError(message: string): NextResponse {
+  return new NextResponse(`RAGfolio configuration error: ${message}`, {
+    status: 500,
+    headers: { "content-type": "text/plain" },
+  });
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const passwordHash = process.env.SITE_PASSWORD_HASH;
   if (!passwordHash) return NextResponse.next(); // gate dormant — public site
 
   const secret = process.env.SESSION_SECRET;
   if (!secret) {
-    return new NextResponse(
-      "RAGfolio configuration error: SITE_PASSWORD_HASH is set but " +
-        "SESSION_SECRET is missing. The gate fails closed rather than " +
-        "serving the site without it. Set SESSION_SECRET (see .env.example).",
-      { status: 500, headers: { "content-type": "text/plain" } }
+    return configError(
+      "SITE_PASSWORD_HASH is set but SESSION_SECRET is missing. The gate " +
+        "fails closed rather than serving the site without it. Set " +
+        "SESSION_SECRET (see .env.example)."
     );
   }
+  const secretError = sessionSecretError(secret);
+  if (secretError) return configError(secretError);
 
   const { pathname } = request.nextUrl;
   if (GATE_EXEMPT.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {

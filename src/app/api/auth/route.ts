@@ -4,9 +4,17 @@ import { decodePasswordHash } from "@/lib/auth/password-hash";
 import {
   SESSION_COOKIE,
   sessionCookieOptions,
+  sessionSecretError,
   signSession,
 } from "@/lib/auth/session";
 import { checkRateLimit, requestIp } from "@/lib/ratelimit";
+
+function configError(message: string): NextResponse {
+  return NextResponse.json(
+    { error: `RAGfolio configuration error: ${message}` },
+    { status: 500 }
+  );
+}
 
 /**
  * Password check for the optional gate: bcrypt compare against
@@ -21,16 +29,13 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
   const secret = process.env.SESSION_SECRET;
   if (!secret) {
-    return NextResponse.json(
-      {
-        error:
-          "RAGfolio configuration error: SITE_PASSWORD_HASH is set but " +
-          "SESSION_SECRET is missing. The gate fails closed — set " +
-          "SESSION_SECRET (see .env.example).",
-      },
-      { status: 500 }
+    return configError(
+      "SITE_PASSWORD_HASH is set but SESSION_SECRET is missing. The gate " +
+        "fails closed — set SESSION_SECRET (see .env.example)."
     );
   }
+  const secretError = sessionSecretError(secret);
+  if (secretError) return configError(secretError);
 
   const limited = await checkRateLimit("auth", requestIp(request));
   if (!limited.success) {

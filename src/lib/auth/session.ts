@@ -45,6 +45,28 @@ export function shouldReissue(session: SessionInfo): boolean {
   return Date.now() / 1000 - session.issuedAt > REISSUE_AFTER_SECONDS;
 }
 
+/**
+ * Minimum SESSION_SECRET length in bytes. 32 (256 bits) is the conventional
+ * floor for an HS256 signing key — a shorter secret is brute-forceable,
+ * letting an attacker forge a valid session cookie without ever seeing the
+ * real value. Both fail-closed call sites (proxy.ts, POST /api/auth) check
+ * this the same way they already check for a missing secret.
+ */
+const MIN_SECRET_BYTES = 32;
+
+/** null when the secret is long enough; otherwise the reason to show the operator. */
+export function sessionSecretError(secret: string): string | null {
+  const bytes = new TextEncoder().encode(secret).length;
+  if (bytes < MIN_SECRET_BYTES) {
+    return (
+      `SESSION_SECRET is only ${bytes} bytes — it must be at least ` +
+      `${MIN_SECRET_BYTES} to resist brute-force forgery of the session ` +
+      `cookie. Generate one with: openssl rand -base64 32`
+    );
+  }
+  return null;
+}
+
 export const sessionCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
