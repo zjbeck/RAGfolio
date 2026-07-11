@@ -27,7 +27,7 @@ export function ChatApp({ forest }: { forest: ForestData }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const wide = useMediaQuery(`(min-width: ${corpusConfig.minViewportWidth}px)`);
 
-  const { messages, sendMessage, stop, status } = useChat<RagfolioUIMessage>({
+  const { messages, sendMessage, stop, status, error } = useChat<RagfolioUIMessage>({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 
@@ -54,8 +54,11 @@ export function ChatApp({ forest }: { forest: ForestData }) {
     />
   );
   const chips = <Chips onPick={send} disabled={busy} />;
+  // The server's onError return value arrives here as error.message — quota
+  // exhaustion and a generic failure are already distinct strings by the time
+  // they reach the client; this just displays whichever one it was.
   const errorNote = status === "error" && (
-    <p className="text-sm text-danger">{copy.chat.error}</p>
+    <p className="text-sm text-danger">{error?.message || copy.chat.error}</p>
   );
 
   // ── Narrow, active: single column; panel stacks beneath the thread. ─────────

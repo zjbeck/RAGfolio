@@ -115,6 +115,23 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   `filterRelaxed: true` in state (the panel shows it; nothing is silent).
   Refusing an answerable question over a self-inflicted over-narrow filter
   helps no one; honest refusals are for content that genuinely isn't there.
+- **Quota exhaustion shows honest, distinct copy** (pre-ship audit P2: a 429
+  and a genuine bug both showed the same generic apology). `src/lib/errors.ts`
+  exports `isQuotaExceededError`, checked against the exact shape of a real
+  captured 429 (`RateLimitQuotaExhaustedError`, `status: 429`, message
+  containing "429"/quota — LangChain's wrapped chat errors and the raw
+  `@google/genai` embedding errors have different shapes, so it checks both).
+  The route's `onError` returns `copy.chat.quotaExceeded` for a quota error,
+  `copy.chat.error` otherwise. The client reads `error?.message` from
+  `useChat` — **not** a hardcoded string — since the server's `onError`
+  return value arrives there verbatim (`ai`'s runtime wraps it as
+  `new Error(chunk.errorText)`). Verified: the classifier against the real
+  captured 429 shape (true) and three negative cases (generic error, invalid
+  API key error, non-Error value — all false); the client-rendering wiring
+  live in-browser via a deliberately invalid `GEMINI_API_KEY` (a 400, not a
+  429 — free to test, and confirms no false-positive), which rendered
+  exactly `copy.chat.error`'s text end-to-end, proving the same code path a
+  real quota error would take.
 - **Client disconnect aborts the pipeline** (pre-ship audit P2: an abandoned
   tab burned every remaining node's Gemini call). `POST /api/chat` passes
   `request.signal` into `graph.stream()`; every Gemini-calling node

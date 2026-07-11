@@ -3,8 +3,10 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
 } from "ai";
+import { copy } from "@/copy";
 import { buildGraph } from "@/lib/graph/graph";
 import type { PipelineStateType } from "@/lib/graph/state";
+import { isQuotaExceededError } from "@/lib/errors";
 import { checkRateLimit, requestIp } from "@/lib/ratelimit";
 import type {
   RagEvent,
@@ -125,8 +127,16 @@ export async function POST(request: Request): Promise<Response> {
         console.log("chat pipeline aborted (client disconnected)");
         return "aborted";
       }
+      // Quota exhaustion isn't a bug — the free tier's daily cap is a known,
+      // named condition, and "check your billing" (the raw API message) is
+      // the wrong thing to show a portfolio visitor. Distinct copy from the
+      // generic apology so the two are never conflated on screen.
+      if (isQuotaExceededError(error)) {
+        console.error("chat pipeline quota exceeded:", error);
+        return copy.chat.quotaExceeded;
+      }
       console.error("chat pipeline error:", error);
-      return "The pipeline hit an error. Try again; if it persists, check the server logs.";
+      return copy.chat.error;
     },
     execute: async ({ writer }) => {
       const graphStream = await graph.stream(

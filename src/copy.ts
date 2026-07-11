@@ -65,7 +65,15 @@ export const copy = {
     sourcesLabel: "Sources",
     refusalTag: "Not in the docs",
     roleYou: "You",
+    /** Any failure that isn't quota exhaustion — an honest, generic apology. */
     error: "Something went wrong generating that answer. Try again.",
+    /**
+     * Distinct from `error`: the Gemini free tier has a daily request cap, and
+     * "please check your billing" (the raw API message) is the wrong thing to
+     * tell a portfolio visitor. Named, not vague, so it reads as expected
+     * behavior on a demo rather than the site being broken.
+     */
+    quotaExceeded: "This demo has hit its usage limit for today — try again later.",
   },
 
   /** The RAG Panel and its two zones. */
