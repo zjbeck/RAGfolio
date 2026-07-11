@@ -1,6 +1,5 @@
 import { copy } from "@/copy";
-import type { RagTurn } from "@/lib/panel/rag-turn";
-import type { RagNodeName } from "@/lib/stream-types";
+import { stepsForTurn, type RagTurn } from "@/lib/panel/rag-turn";
 
 /**
  * Sequence view: six numbered steps, each with one plain-language sentence
@@ -8,19 +7,12 @@ import type { RagNodeName } from "@/lib/stream-types";
  * stream events arrive. The sentences are explanatory only — the terse
  * results data lives in the Pipeline boxes, never duplicated here.
  *
- * The sixth step is Answer, or Refuse when the pipeline refuses.
+ * The sixth step is Answer, or Refuse when the pipeline refuses. Step
+ * completion is also announced to screen readers — see RagSteps, which wraps
+ * this view and stays accurate regardless of which sub-view is toggled.
  */
 export function SequenceView({ turn }: { turn: RagTurn }) {
-  const refused = turn.byNode.Route?.route === "refuse";
-  const lastStep: RagNodeName = refused ? "Refuse" : "Answer";
-  const steps: RagNodeName[] = [
-    "Analyze",
-    "Filter",
-    "Retrieve",
-    "Grade",
-    "Route",
-    lastStep,
-  ];
+  const steps = stepsForTurn(turn);
 
   return (
     <div className="space-y-1">

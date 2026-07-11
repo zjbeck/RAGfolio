@@ -60,3 +60,14 @@ export const PIPELINE_NODES: RagNodeName[] = [
   "Route",
   "Answer",
 ];
+
+/**
+ * The six steps for a given turn, swapping the sixth for Refuse when the
+ * pipeline declined to answer. Shared by SequenceView (what renders) and
+ * RagSteps' aria-live announcer (what screen readers hear), so the two never
+ * disagree about which step is "last."
+ */
+export function stepsForTurn(turn: RagTurn): RagNodeName[] {
+  const lastStep: RagNodeName = turn.byNode.Route?.route === "refuse" ? "Refuse" : "Answer";
+  return [...PIPELINE_NODES.slice(0, 5), lastStep];
+}

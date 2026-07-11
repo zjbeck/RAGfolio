@@ -132,6 +132,20 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   429 — free to test, and confirms no false-positive), which rendered
   exactly `copy.chat.error`'s text end-to-end, proving the same code path a
   real quota error would take.
+- **Sequence step completions are announced to screen readers**
+  (pre-ship audit P2: the checkmarks narrated visually with nothing spoken).
+  `RagSteps` renders a visually-hidden (`sr-only`) `role="status"
+  aria-live="polite"` element announcing only the most recently completed
+  step ("Retrieve complete", …) — not the whole six-row list, which would
+  re-read all six on every update. It reads `turn` directly rather than the
+  currently-toggled sub-view, so switching to Raw Trace doesn't silence it.
+  `stepsForTurn` (`src/lib/panel/rag-turn.ts`) is the shared source for "which
+  six steps, with Refuse swapped in for Answer when the pipeline declined" —
+  extracted so `SequenceView` and this announcer can't disagree about the
+  last step. Verified via a mock-turn page (no live call needed): both the
+  DOM (`sr-only` computes to a real 1×1px hidden box) and the accessibility
+  tree (a genuine `status` node) were inspected directly, at a partial state
+  ("Retrieve complete") and a finished one ("Answer complete").
 - **The active thread states plainly that it has no cross-turn memory**
   (pre-ship audit P2: a multi-message thread UI implies conversational
   context the pipeline doesn't carry — `questionFrom` in the chat route only
