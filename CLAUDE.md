@@ -129,6 +129,19 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
 - `src/generated/corpus.json` is a **gitignored build artifact**; `npm run
   build` runs ingest first, so `GEMINI_API_KEY` must be present at build time
   (on Vercel: a project env var covers build and runtime).
+- **Ingest caches embeddings by content hash** (pre-ship audit P1: every
+  deploy was re-embedding all 82 chunks regardless of changes). Each `DocMeta`
+  carries `contentHash` (sha256 of raw frontmatter+body). Ingest reads the
+  *previous* `corpus.json` (if present and its `embeddingModel`/`dimensions`
+  match current — a model/dimension change invalidates the whole cache, since
+  old and new vectors wouldn't be cosine-comparable) and reuses a doc's chunk
+  embeddings wholesale when its hash is unchanged. Granularity is **per-doc,
+  not per-chunk**: the chunker is a deterministic pure function of body text,
+  so an unchanged hash guarantees an identical chunk list, and any edit inside
+  a doc re-embeds all of that doc's chunks (not just the changed section).
+  Verified empirically: unmodified re-run → 0 calls; editing one doc → only
+  that doc's chunks (6 of 82) re-embed; `npm run build` (the real deploy path)
+  benefits identically.
 - **The corpus is loaded via a static import**
   (`import corpus from "@/generated/corpus.json"` in
   `src/lib/corpus/retrieval.ts`), not `fs.readFileSync` against a

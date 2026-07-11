@@ -9,6 +9,7 @@
  *
  * Run: npm run ingest   (also runs automatically as part of `npm run build`)
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
@@ -36,6 +37,11 @@ const OUTPUT_PATH = path.resolve(process.cwd(), "src/generated/corpus.json");
 function fail(message: string): never {
   console.error(`\n✗ ingest failed: ${message}`);
   process.exit(1);
+}
+
+/** Content-addressed key for the embedding cache: identical text → identical hash. */
+function hashContent(frontmatterText: string, body: string): string {
+  return crypto.createHash("sha256").update(frontmatterText).update("\0").update(body).digest("hex");
 }
 
 /** Frontmatter shape we accept; facet keys are validated dynamically. */
@@ -112,6 +118,7 @@ function parseDoc(
       description: fm.description.trim(),
       facets,
       crossLinks,
+      contentHash: hashContent(frontmatterText, content),
     },
     body: content,
     frontmatterText,
@@ -163,6 +170,8 @@ async function main(): Promise<void> {
     }
   }
 
+  const docsByKey = new Map(docs.map((d) => [`${d.collection}/${d.docSlug}`, d]));
+
   // 3. Cross-link targets must exist.
   const docKeys = new Set(bodies.keys());
   for (const doc of docs) {
@@ -202,44 +211,97 @@ async function main(): Promise<void> {
     ids.add(chunk.id);
   }
 
-  // 5. Embed. Document title carries doc + heading context so short chunks
-  //    still embed with enough signal.
-  console.log(
-    `Embedding ${chunks.length} chunks from ${docs.length} docs with ${EMBEDDING_MODEL} (${EMBEDDING_DIMENSIONS} dims)…`
-  );
-  const docTitles = new Map(docs.map((d) => [`${d.collection}/${d.docSlug}`, d.title]));
-  const embedInputs = chunks.map((chunk) => {
-    const title = docTitles.get(`${chunk.collection}/${chunk.docSlug}`)!;
-    const context =
-      chunk.headingPath.length > 0
-        ? `${title} — ${chunk.headingPath.join(" > ")}`
-        : title;
-    return formatDocumentForEmbedding(context, chunk.text);
-  });
-  const vectors = await embedTexts(embedInputs, (done, total) => {
-    if (done % 10 === 0 || done === total) {
-      process.stdout.write(`  ${done}/${total}\n`);
+  // 5. Embed — but only chunks whose doc actually changed. A doc's chunks are
+  //    reused wholesale from the previous build's artifact when that doc's
+  //    frontmatter+body hash is unchanged: the chunker is a deterministic pure
+  //    function of body text, so an identical hash guarantees an identical
+  //    chunk list (same ids, same text) and the cached vectors are still
+  //    correct. New/edited docs, and any doc missing from a prior build
+  //    (first run, or a corrupt/pre-cache artifact), fall through to a fresh
+  //    embed — the same behavior as before this cache existed.
+  const previousDocHash = new Map<string, string>();
+  const previousChunkById = new Map<string, EmbeddedChunk>();
+  if (fs.existsSync(OUTPUT_PATH)) {
+    try {
+      const previous = JSON.parse(fs.readFileSync(OUTPUT_PATH, "utf8")) as CorpusArtifact;
+      // A model or dimension change invalidates every cached vector — they
+      // wouldn't be comparable to freshly embedded ones in cosine similarity.
+      if (
+        previous.embeddingModel === EMBEDDING_MODEL &&
+        previous.dimensions === EMBEDDING_DIMENSIONS
+      ) {
+        for (const d of previous.docs ?? []) {
+          if (d.contentHash) previousDocHash.set(`${d.collection}/${d.docSlug}`, d.contentHash);
+        }
+        for (const c of previous.chunks ?? []) {
+          previousChunkById.set(c.id, c);
+        }
+      }
+    } catch {
+      // Corrupt or unreadable previous artifact — treat as no cache (full embed).
     }
-  });
+  }
 
-  // 6. Validate and write.
-  const embedded: EmbeddedChunk[] = chunks.map((chunk, i) => {
-    const embedding = vectors[i];
-    if (
-      embedding.length !== EMBEDDING_DIMENSIONS ||
-      embedding.some((v) => !Number.isFinite(v))
-    ) {
-      fail(`chunk "${chunk.id}" produced an invalid embedding`);
+  const docTitles = new Map(docs.map((d) => [`${d.collection}/${d.docSlug}`, d.title]));
+  const embedded: (EmbeddedChunk | undefined)[] = new Array(chunks.length);
+  const toEmbed: { index: number; chunk: Chunk }[] = [];
+
+  for (const [index, chunk] of chunks.entries()) {
+    const docKey = `${chunk.collection}/${chunk.docSlug}`;
+    const doc = docsByKey.get(docKey)!;
+    const docUnchanged = previousDocHash.get(docKey) === doc.contentHash;
+    const cached = docUnchanged ? previousChunkById.get(chunk.id) : undefined;
+    if (cached && cached.embedding.length === EMBEDDING_DIMENSIONS) {
+      embedded[index] = { ...chunk, embedding: cached.embedding };
+    } else {
+      toEmbed.push({ index, chunk });
     }
-    return { ...chunk, embedding };
-  });
+  }
+
+  const reused = chunks.length - toEmbed.length;
+  if (toEmbed.length === 0) {
+    console.log(`All ${chunks.length} chunks unchanged — 0 embedding calls.`);
+  } else {
+    console.log(
+      `Embedding ${toEmbed.length} of ${chunks.length} chunks with ${EMBEDDING_MODEL} ` +
+        `(${EMBEDDING_DIMENSIONS} dims); ${reused} reused from the cache…`
+    );
+    const embedInputs = toEmbed.map(({ chunk }) => {
+      const title = docTitles.get(`${chunk.collection}/${chunk.docSlug}`)!;
+      const context =
+        chunk.headingPath.length > 0
+          ? `${title} — ${chunk.headingPath.join(" > ")}`
+          : title;
+      return formatDocumentForEmbedding(context, chunk.text);
+    });
+    const vectors = await embedTexts(embedInputs, (done, total) => {
+      if (done % 10 === 0 || done === total) {
+        process.stdout.write(`  ${done}/${total}\n`);
+      }
+    });
+    for (const [i, { index, chunk }] of toEmbed.entries()) {
+      const embedding = vectors[i];
+      if (
+        embedding.length !== EMBEDDING_DIMENSIONS ||
+        embedding.some((v) => !Number.isFinite(v))
+      ) {
+        fail(`chunk "${chunk.id}" produced an invalid embedding`);
+      }
+      embedded[index] = { ...chunk, embedding };
+    }
+  }
+
+  // 6. Write. Every slot is filled by now — either reused from cache or
+  // freshly embedded above — so this cast just discharges the sparse-array
+  // type the two-pass loop above needed.
+  const finalChunks = embedded as EmbeddedChunk[];
 
   const artifact: CorpusArtifact = {
     embeddingModel: EMBEDDING_MODEL,
     dimensions: EMBEDDING_DIMENSIONS,
     collections: corpusConfig.collections,
     docs,
-    chunks: embedded,
+    chunks: finalChunks,
     sources,
   };
 
@@ -247,11 +309,13 @@ async function main(): Promise<void> {
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(artifact));
 
   const byCollection = new Map<string, number>();
-  for (const chunk of embedded) {
+  for (const chunk of finalChunks) {
     byCollection.set(chunk.collection, (byCollection.get(chunk.collection) ?? 0) + 1);
   }
   console.log(`\n✓ wrote ${path.relative(process.cwd(), OUTPUT_PATH)}`);
-  console.log(`  ${docs.length} docs, ${embedded.length} chunks:`);
+  console.log(
+    `  ${docs.length} docs, ${finalChunks.length} chunks (${reused} reused, ${toEmbed.length} embedded):`
+  );
   for (const { slug } of corpusConfig.collections) {
     console.log(`    ${slug}: ${byCollection.get(slug) ?? 0} chunks`);
   }

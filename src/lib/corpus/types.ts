@@ -54,6 +54,12 @@ export interface DocMeta {
   /** Facet key → value, validated against the config vocabulary at ingest. */
   facets: FacetFilter;
   crossLinks: CrossLink[];
+  /**
+   * sha256 of this doc's raw frontmatter+body. Ingest compares it against the
+   * previous build's stored hash to skip re-embedding unchanged docs — see
+   * CLAUDE.md's embedding-cache note.
+   */
+  contentHash: string;
 }
 
 export interface Chunk {
