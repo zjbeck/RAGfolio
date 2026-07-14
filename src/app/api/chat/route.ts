@@ -14,8 +14,15 @@ import type {
   RetrievedChunkMeta,
 } from "@/lib/stream-types";
 
-/** Streaming responses need more than Vercel's default function window. */
-export const maxDuration = 60;
+/**
+ * Streaming responses need more than Vercel's default function window. 60s
+ * was too thin a margin: local testing showed the six-node pipeline running
+ * ~50–57s already, so a live deployment (added network latency, cold start,
+ * potential rate-limit backoff) tipped it into FUNCTION_INVOCATION_TIMEOUT
+ * (confirmed against a real deployment, 2026-07-14). 180s keeps real margin
+ * while staying well under the Hobby-plan ceiling (300s).
+ */
+export const maxDuration = 180;
 
 /** The last user message's text is the question; parts is the v7 shape. */
 function questionFrom(messages: RagfolioUIMessage[]): string {
