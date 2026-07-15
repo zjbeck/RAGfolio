@@ -42,10 +42,14 @@ Requires Node 20+ and a free [Gemini API key](https://aistudio.google.com/apikey
 
 ```bash
 npm install
-echo "GEMINI_API_KEY=your-key-here" > .env.local
+cp .env.example .env.local
+# then fill in GEMINI_CHAT_API_KEY and GEMINI_EMBEDDING_API_KEY in .env.local
 npm run ingest     # embed the example corpus → src/generated/corpus.json
 npm run dev        # http://localhost:3000
 ```
+
+Chat provider defaults to Gemini (`LLM_PROVIDER=gemini`, pre-set in
+`.env.example`); see [environment.md](./docs/environment.md) to switch to Groq.
 
 Prefer the terminal? `npm run ask -- "What webhook events does Verdant send?"`
 runs the whole pipeline and prints the node events and the cited answer.

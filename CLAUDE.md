@@ -23,6 +23,14 @@ Flagged so far:
 2. **`middleware.ts` → `proxy.ts`.** Next 16 renamed Middleware to Proxy
    (same functionality; Node.js runtime by default; exports a `proxy`
    function). The password gate lives in `src/proxy.ts`.
+3. **Groq model choice, V2 Phase 1.** A web search claimed
+   `llama-3.3-70b-versatile` is deprecated on Groq; Groq's own docs page
+   (`console.groq.com/docs/models`, fetched live 2026-07-14) still lists it
+   under "Production Models" with no deprecation notice — that specific claim
+   is unconfirmed, not resolved. `openai/gpt-oss-120b` was picked instead
+   because it sidesteps the ambiguity (LangChain's own ChatGroq integration
+   docs use it as their canonical example) rather than because the
+   alternative was disproven.
 
 ### Research-first
 Consult current docs before writing integration code — training data is stale.
@@ -105,6 +113,80 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   client the adapter uses) has to travel with it — nothing fails a
   type-check or test if it's dropped, and the multi-minute hang only
   reappears under real sustained rate-limiting, not in dev.
+  ✅ **Resolved in V2 Phase 1** (see below): `maxRetries: 1` is set on both
+  the Gemini and Groq chat adapters in `src/lib/providers/chat.ts`.
+
+## V2 Phase 1 — Provider Abstraction
+
+Chat and embeddings are two independent seams (ABSTRACTION_AUDIT.md A3), each
+with its own module under `src/lib/providers/`.
+
+- **Chat** (`src/lib/providers/chat.ts`): `chatModel(thinkingBudget)` returns
+  `BaseChatModel` (`@langchain/core/language_models/chat_models`) — not a
+  bespoke wrapper interface. This is a deliberate, boring choice: both
+  `ChatGoogleGenerativeAI` and `ChatGroq` already extend the exact same
+  LangChain abstract class, and every graph node (`nodes.ts`) already only
+  depended on that shape (`withStructuredOutput`, `.stream()`, `.invoke()`) —
+  the old `ChatGoogleGenerativeAI` return-type annotation was the only
+  Gemini-specific leak, and removing it required no changes to Analyze,
+  Grade, or Answer beyond the import. Inventing a second, custom interface on
+  top of an interface that already exists and already fits would be
+  needless indirection.
+  - Provider selection: `LLM_PROVIDER` env var, `"gemini" | "groq"`, resolved
+    **once at module load** (`resolveProvider()`, same eager-throw pattern as
+    the partial-Upstash-config check in `ratelimit.ts`) — fails at boot with
+    a named error if unset or invalid, never silently defaults. `.env.example`
+    ships with `LLM_PROVIDER=gemini` pre-filled as the *documented* default
+    (a template file convenience), not a code-level fallback — delete that
+    line and every entry point (the Next server, `scripts/ask.ts`,
+    `scripts/eval.ts`) throws immediately on import, naming the fix.
+  - Gemini: `gemini-3.5-flash` (unchanged), key `GEMINI_CHAT_API_KEY`.
+  - Groq: `openai/gpt-oss-120b` (see the Research-first flag above for why),
+    key `GROQ_API_KEY` (LangChain's own default lookup name for `ChatGroq`,
+    verified against `docs.langchain.com/oss/javascript/integrations/chat/groq`
+    2026-07-14 — passed explicitly rather than relying on the SDK's implicit
+    lookup, for the same reason `nodes.ts` always did this for Gemini: a
+    missing key produces this project's own named error, not LangChain's).
+    `thinkingConfig` is Gemini-only; `chatModel()`'s `thinkingBudget` argument
+    is silently a no-op on the Groq path (Groq has no equivalent dial).
+  - **Live-verified 2026-07-14**: one real call through the Analyze node with
+    `LLM_PROVIDER=groq` — correct intent (`"how-to"`) and facet extraction
+    (`module: "sensors"`) from "How do I calibrate a soil-moisture sensor?",
+    and — unexpectedly — `usage_metadata` was populated
+    (`inputTokens: 488, outputTokens: 189`) with no Gemini-style `streamUsage`
+    flag needed. This resolves what would otherwise have been an open
+    question about usage-tracking parity across providers.
+- **Embeddings** (`src/lib/providers/embeddings.ts`): a separate
+  `EmbeddingsAdapter` interface — `{ model, dimensions, embedDocuments(docs),
+  embedQuery(question) }` — replacing the old `src/lib/corpus/embedding.ts`.
+  The actual A3 bug wasn't the missing interface so much as *where the
+  Gemini-specific formatting lived*: `formatDocumentForEmbedding` /
+  `formatQueryForEmbedding` (the `title: X | text: Y` / `task: … | query: Z`
+  asymmetric-retrieval prefixes gemini-embedding-2 needs since it doesn't
+  support `taskType`) were called by the *callers* (`ingest.ts`, `nodes.ts`),
+  not the embeddings module — every caller had to know it was talking to
+  Gemini. Both formatters are now private methods on
+  `GeminiEmbeddingsAdapter`; callers pass raw `{title, text}` or a raw
+  question and never see provider-specific formatting.
+  - No `EMBEDDINGS_PROVIDER` env var exists — Gemini is the only
+    implementation, so there is nothing to select yet. The seam is the
+    `embeddings` export itself; a second adapter would just replace it.
+  - Key renamed to `GEMINI_EMBEDDING_API_KEY` — independent of the chat key,
+    so a Groq-chat + Gemini-embeddings deployment sets only
+    `GEMINI_EMBEDDING_API_KEY`, never `GEMINI_CHAT_API_KEY`.
+  - **Live-verified 2026-07-14**: one real `embedQuery` call through the
+    refactored adapter → 768-dim vector, every value finite.
+- ⚠️ **Breaking env var rename.** `GEMINI_API_KEY` (one var, shared by chat
+  and embeddings) no longer exists. It's now `LLM_PROVIDER` +
+  `GEMINI_CHAT_API_KEY` (or `GROQ_API_KEY`) + `GEMINI_EMBEDDING_API_KEY`.
+  **The live `zacharybeck.dev` Vercel deployment still has the old
+  `GEMINI_API_KEY` var set and does not yet have this Phase 1 code** — its
+  env vars must be updated (and the deploy repo must receive this same
+  refactor) before this change reaches that project, or the site fails
+  closed at boot (by design — consistent with this project's fail-closed
+  conventions elsewhere) rather than silently breaking.
+- `@langchain/groq@1.3.1` added as a pinned exact dependency (peer dep
+  `@langchain/core ^1.1.30`, satisfied by this project's `1.2.1`).
 
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).

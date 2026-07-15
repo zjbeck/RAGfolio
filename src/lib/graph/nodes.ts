@@ -1,11 +1,8 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
 import corpusConfig from "@config";
 import { copy } from "@/copy";
-import {
-  embedText,
-  formatQueryForEmbedding,
-} from "@/lib/corpus/embedding";
+import { chatModel } from "@/lib/providers/chat";
+import { embeddings } from "@/lib/providers/embeddings";
 import {
   applyFacetFilter,
   loadCorpus,
@@ -16,31 +13,11 @@ import type { RunnableConfig } from "@langchain/core/runnables";
 import type { FacetFilter } from "@/lib/corpus/types";
 import type { Citation, NodeUsage, PipelineStateType } from "./state";
 
-const CHAT_MODEL = "gemini-3.5-flash";
-
-/**
- * Analyze and Grade run with thinking OFF (budget 0) — verified empirically:
- * the API accepts thinkingBudget 0 and reports no thought tokens. The Answer
- * node's budget comes from corpus.config.ts (default 0); the eval harness
- * A/Bs it against modest budgets.
- */
-function chatModel(thinkingBudget: number): ChatGoogleGenerativeAI {
-  return new ChatGoogleGenerativeAI({
-    model: CHAT_MODEL,
-    // The library defaults to GOOGLE_API_KEY; this project's env var is GEMINI_API_KEY.
-    apiKey: process.env.GEMINI_API_KEY,
-    temperature: 0,
-    thinkingConfig: { thinkingBudget },
-    // Without this, streamed chunks carry no usage_metadata and the
-    // thinking-off assertion would have nothing to check for Answer.
-    streamUsage: true,
-    // Default is 6: on a sustained 429, LangChain's AsyncCaller treats a
-    // short retry-delay as "just wait" and silently backs off across all
-    // 3 chat calls in the graph, hanging well past the function timeout.
-    // 1 allows a single quick retry for a genuine transient blip only.
-    maxRetries: 1,
-  });
-}
+// Analyze and Grade run with thinking OFF (budget 0) — verified empirically:
+// the API accepts thinkingBudget 0 and reports no thought tokens on Gemini
+// (Groq has no equivalent concept; see providers/chat.ts). The Answer node's
+// budget comes from corpus.config.ts (default 0); the eval harness A/Bs it
+// against modest budgets.
 
 type StateUpdate = Partial<PipelineStateType>;
 
@@ -163,10 +140,7 @@ export async function retrieve(
   const corpus = loadCorpus();
   const candidates = applyFacetFilter(corpus.chunks, state.filter);
   if (candidates.length === 0) return { chunks: [] };
-  const queryEmbedding = await embedText(
-    formatQueryForEmbedding(state.question),
-    config?.signal
-  );
+  const queryEmbedding = await embeddings.embedQuery(state.question, config?.signal);
   return { chunks: topK(queryEmbedding, candidates, corpusConfig.k) };
 }
 

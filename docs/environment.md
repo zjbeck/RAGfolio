@@ -1,11 +1,14 @@
 # Environment variables
 
 Copy `.env.example` to `.env.local` for local development; set the same
-variables in your Vercel project settings for deployment. Only one is required.
+variables in your Vercel project settings for deployment.
 
 | Variable | Required | Enables |
 | --- | --- | --- |
-| `GEMINI_API_KEY` | **Yes** | Chat (`gemini-3.5-flash`) and embeddings (`gemini-embedding-2`). Needed at build time too. |
+| `LLM_PROVIDER` | **Yes** | `gemini` or `groq` — selects the chat model. Fails at boot if unset or invalid; no silent default. |
+| `GEMINI_CHAT_API_KEY` | If `LLM_PROVIDER=gemini` | Chat via `gemini-3.5-flash`. |
+| `GROQ_API_KEY` | If `LLM_PROVIDER=groq` | Chat via Groq (`openai/gpt-oss-120b`). |
+| `GEMINI_EMBEDDING_API_KEY` | **Yes** | Embeddings (`gemini-embedding-2`) — independent of `LLM_PROVIDER`. Needed at build time too. |
 | `SITE_PASSWORD_HASH` | No | The password gate (with `SESSION_SECRET`). |
 | `SESSION_SECRET` | No | Signs the session cookie. Required if `SITE_PASSWORD_HASH` is set. |
 | `LANGSMITH_API_KEY` | No | LangSmith tracing of pipeline runs. |
@@ -16,16 +19,27 @@ variables in your Vercel project settings for deployment. Only one is required.
 There is intentionally **no GitHub token** anywhere — your content lives in your
 repo, and Vercel's GitHub integration handles access.
 
-## `GEMINI_API_KEY` (required)
+## Chat provider: `LLM_PROVIDER` (required)
 
-Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
-It's used at **build time** (ingest embeds your corpus during `npm run build`)
-and at **runtime** (the chat pipeline). On Vercel, one project-level variable
-covers both.
+Chat and embeddings are independent decisions — see
+[architecture.md](./architecture.md) for the adapter seam. Set `LLM_PROVIDER`
+to `gemini` (documented default) or `groq` (tested alternative), then supply
+that provider's key:
 
-Free-tier note: `gemini-3.5-flash` allows roughly **5 requests/minute** and
-**20/day**. Each question costs 2–3 chat calls. That's fine for a personal
-portfolio; for anything busier, or to run the full eval suite, use a paid tier.
+- `gemini` → `GEMINI_CHAT_API_KEY`, free key at
+  [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Free-tier
+  note: `gemini-3.5-flash` allows roughly **5 requests/minute** and **20/day**.
+  Each question costs 2–3 chat calls.
+- `groq` → `GROQ_API_KEY`, free key at
+  [console.groq.com/keys](https://console.groq.com/keys).
+
+## Embeddings: `GEMINI_EMBEDDING_API_KEY` (required)
+
+Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+— can be the same Gemini project as your chat key, or a different one; the two
+are configured independently. Used at **build time** (ingest embeds your corpus
+during `npm run build`) and at **runtime** (the Retrieve node embeds each
+question). Only Gemini is implemented today, regardless of `LLM_PROVIDER`.
 
 ## The password gate (optional)
 

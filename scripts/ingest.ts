@@ -15,12 +15,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import corpusConfig from "../corpus.config";
 import { chunkMarkdown } from "../src/lib/corpus/chunker";
-import {
-  EMBEDDING_DIMENSIONS,
-  EMBEDDING_MODEL,
-  embedTexts,
-  formatDocumentForEmbedding,
-} from "../src/lib/corpus/embedding";
+import { embeddings } from "../src/lib/providers/embeddings";
 import type {
   Chunk,
   CorpusArtifact,
@@ -227,8 +222,8 @@ async function main(): Promise<void> {
       // A model or dimension change invalidates every cached vector — they
       // wouldn't be comparable to freshly embedded ones in cosine similarity.
       if (
-        previous.embeddingModel === EMBEDDING_MODEL &&
-        previous.dimensions === EMBEDDING_DIMENSIONS
+        previous.embeddingModel === embeddings.model &&
+        previous.dimensions === embeddings.dimensions
       ) {
         for (const d of previous.docs ?? []) {
           if (d.contentHash) previousDocHash.set(`${d.collection}/${d.docSlug}`, d.contentHash);
@@ -251,7 +246,7 @@ async function main(): Promise<void> {
     const doc = docsByKey.get(docKey)!;
     const docUnchanged = previousDocHash.get(docKey) === doc.contentHash;
     const cached = docUnchanged ? previousChunkById.get(chunk.id) : undefined;
-    if (cached && cached.embedding.length === EMBEDDING_DIMENSIONS) {
+    if (cached && cached.embedding.length === embeddings.dimensions) {
       embedded[index] = { ...chunk, embedding: cached.embedding };
     } else {
       toEmbed.push({ index, chunk });
@@ -263,8 +258,8 @@ async function main(): Promise<void> {
     console.log(`All ${chunks.length} chunks unchanged — 0 embedding calls.`);
   } else {
     console.log(
-      `Embedding ${toEmbed.length} of ${chunks.length} chunks with ${EMBEDDING_MODEL} ` +
-        `(${EMBEDDING_DIMENSIONS} dims); ${reused} reused from the cache…`
+      `Embedding ${toEmbed.length} of ${chunks.length} chunks with ${embeddings.model} ` +
+        `(${embeddings.dimensions} dims); ${reused} reused from the cache…`
     );
     const embedInputs = toEmbed.map(({ chunk }) => {
       const title = docTitles.get(`${chunk.collection}/${chunk.docSlug}`)!;
@@ -272,9 +267,9 @@ async function main(): Promise<void> {
         chunk.headingPath.length > 0
           ? `${title} — ${chunk.headingPath.join(" > ")}`
           : title;
-      return formatDocumentForEmbedding(context, chunk.text);
+      return { title: context, text: chunk.text };
     });
-    const vectors = await embedTexts(embedInputs, (done, total) => {
+    const vectors = await embeddings.embedDocuments(embedInputs, (done, total) => {
       if (done % 10 === 0 || done === total) {
         process.stdout.write(`  ${done}/${total}\n`);
       }
@@ -282,7 +277,7 @@ async function main(): Promise<void> {
     for (const [i, { index, chunk }] of toEmbed.entries()) {
       const embedding = vectors[i];
       if (
-        embedding.length !== EMBEDDING_DIMENSIONS ||
+        embedding.length !== embeddings.dimensions ||
         embedding.some((v) => !Number.isFinite(v))
       ) {
         fail(`chunk "${chunk.id}" produced an invalid embedding`);
@@ -297,8 +292,8 @@ async function main(): Promise<void> {
   const finalChunks = embedded as EmbeddedChunk[];
 
   const artifact: CorpusArtifact = {
-    embeddingModel: EMBEDDING_MODEL,
-    dimensions: EMBEDDING_DIMENSIONS,
+    embeddingModel: embeddings.model,
+    dimensions: embeddings.dimensions,
     collections: corpusConfig.collections,
     docs,
     chunks: finalChunks,

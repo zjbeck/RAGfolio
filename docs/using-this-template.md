@@ -62,14 +62,16 @@ fix if they disagree.
 
 ## 4. Set environment variables
 
-Copy `.env.example` to `.env.local` and fill in at least `GEMINI_API_KEY`. The
+Copy `.env.example` to `.env.local` and fill in at least `GEMINI_EMBEDDING_API_KEY`
+(embeddings) and `GEMINI_CHAT_API_KEY` (chat, since `LLM_PROVIDER=gemini` is the
+documented default — switch to `groq` + `GROQ_API_KEY` if you'd rather). The
 full reference — including the optional gate, rate limiting, and tracing — is in
 [environment.md](./environment.md).
 
 Verify locally:
 
 ```bash
-npm run ingest       # embeds your corpus; needs GEMINI_API_KEY
+npm run ingest       # embeds your corpus; needs GEMINI_EMBEDDING_API_KEY
 npm run dev
 ```
 
@@ -78,9 +80,9 @@ npm run dev
 1. Push your repo to GitHub.
 2. In Vercel, **Add New → Project** and import the repo. Vercel's GitHub
    integration handles access — this project stores **no** GitHub token.
-3. Add your environment variables in the Vercel project settings. `GEMINI_API_KEY`
-   is needed at **build** time too: `npm run build` runs ingest, which embeds
-   your corpus during the build.
+3. Add your environment variables in the Vercel project settings.
+   `GEMINI_EMBEDDING_API_KEY` is needed at **build** time too: `npm run build`
+   runs ingest, which embeds your corpus during the build.
 4. Deploy.
 
 For a public deployment, set up the password gate and Upstash rate limiting
