@@ -13,11 +13,30 @@ export interface CollectionConfig {
   label: string;
 }
 
+export interface IdentityLink {
+  label: string;
+  href: string;
+}
+
+/**
+ * First-class author/owner identity (ABSTRACTION_AUDIT.md V2-15) — config,
+ * not prose, so it's mechanically fillable without touching any component.
+ */
+export interface Identity {
+  name: string;
+  /** Role or tagline, e.g. "Backend engineer" or "Notes on distributed systems". */
+  role: string;
+  /** One sentence — not a full bio page. */
+  bio: string;
+  links: IdentityLink[];
+}
+
 /** Shape of the default export of corpus.config.ts. */
 export interface CorpusConfig {
   siteName: string;
   /** Landing-page greeting. Re-exported by src/copy.ts — components import copy, not this. */
   greeting: string;
+  identity: Identity;
   /** Collections in display order. Every directory under content/ must appear here. */
   collections: CollectionConfig[];
   /**
@@ -25,6 +44,13 @@ export interface CorpusConfig {
    * validation at ingest and the Analyze node's filter extraction at runtime.
    */
   facets: Record<string, string[]>;
+  /**
+   * Facet keys ingest requires every doc's frontmatter to declare
+   * (ABSTRACTION_AUDIT.md A2). Empty by default — no facet is mandatory
+   * unless its key is listed here; every key here must also be a key in
+   * `facets`.
+   */
+  requiredFacets: string[];
   /** Suggested prompt chips shown under the chat input. */
   suggestedPrompts: string[];
   /** Below this viewport width the RAG Panel stacks behind a disclosure. */
@@ -100,11 +126,23 @@ export interface DocSource {
   body: string;
 }
 
+/**
+ * A collection's own index-page content, parsed from its `_index.md`
+ * frontmatter. Collection pages are containers (title + description +
+ * a grid of the collection's docs) — no body, excluded from ingest/retrieval.
+ */
+export interface CollectionMeta {
+  title: string;
+  description: string;
+}
+
 /** The single static JSON artifact emitted by `npm run ingest`. */
 export interface CorpusArtifact {
   embeddingModel: string;
   dimensions: number;
   collections: CollectionConfig[];
+  /** Keyed by collection slug. */
+  collectionPages: Record<string, CollectionMeta>;
   docs: DocMeta[];
   chunks: EmbeddedChunk[];
   /**

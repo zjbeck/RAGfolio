@@ -18,6 +18,7 @@ import { chunkMarkdown } from "../src/lib/corpus/chunker";
 import { embeddings } from "../src/lib/providers/embeddings";
 import type {
   Chunk,
+  CollectionMeta,
   CorpusArtifact,
   CrossLink,
   DocMeta,
@@ -25,6 +26,9 @@ import type {
   FacetFilter,
 } from "../src/lib/corpus/types";
 import { loadEnvLocal } from "./load-env";
+
+/** Reserved filename for a collection's own index-page frontmatter. */
+const COLLECTION_INDEX_FILE = "_index.md";
 
 const CONTENT_DIR = path.resolve(process.cwd(), "content");
 const OUTPUT_PATH = path.resolve(process.cwd(), "src/generated/corpus.json");
@@ -67,12 +71,11 @@ function parseDoc(
   if (typeof fm.description !== "string" || fm.description.trim() === "") {
     fail(`${where}: frontmatter needs a non-empty "description"`);
   }
-  if (typeof fm.doc_type !== "string") {
-    fail(`${where}: frontmatter needs a "doc_type"`);
-  }
 
   // Facets: exactly the keys declared in corpus.config.ts, validated against
-  // its vocabulary. Unknown values fail; absent optional facets are fine.
+  // its vocabulary. Unknown values fail; a facet not listed in
+  // corpus.config.ts's requiredFacets is optional (ABSTRACTION_AUDIT.md A2 —
+  // no facet name, including "doc_type", is hardcoded as mandatory).
   const facets: FacetFilter = {};
   for (const [facetKey, vocabulary] of Object.entries(corpusConfig.facets)) {
     const value = fm[facetKey];
@@ -84,8 +87,12 @@ function parseDoc(
     }
     facets[facetKey] = value;
   }
-  if (facets.doc_type === undefined) {
-    fail(`${where}: "doc_type" must be one of the values declared in corpus.config.ts`);
+  for (const requiredKey of corpusConfig.requiredFacets) {
+    if (facets[requiredKey] === undefined) {
+      fail(
+        `${where}: missing required facet "${requiredKey}" (listed in corpus.config.ts requiredFacets) — allowed values: ${corpusConfig.facets[requiredKey].join(", ")}`
+      );
+    }
   }
 
   // Cross-links: optional [{ to: "collection/docSlug", label }] — targets are
@@ -120,8 +127,39 @@ function parseDoc(
   };
 }
 
+/**
+ * A collection's own index-page frontmatter (title + description only — no
+ * body, no facets). Collection pages are containers, not docs: excluded from
+ * chunking, embedding, and retrieval entirely.
+ */
+function parseCollectionIndex(collection: string): CollectionMeta {
+  const where = `content/${collection}/${COLLECTION_INDEX_FILE}`;
+  const filePath = path.join(CONTENT_DIR, collection, COLLECTION_INDEX_FILE);
+  if (!fs.existsSync(filePath)) {
+    fail(`${where} is required — every collection needs a title and description for its index page`);
+  }
+  const { data } = matter(fs.readFileSync(filePath, "utf8"));
+  const fm = data as { title?: unknown; description?: unknown };
+  if (typeof fm.title !== "string" || fm.title.trim() === "") {
+    fail(`${where}: frontmatter needs a non-empty "title"`);
+  }
+  if (typeof fm.description !== "string" || fm.description.trim() === "") {
+    fail(`${where}: frontmatter needs a non-empty "description"`);
+  }
+  return { title: fm.title.trim(), description: fm.description.trim() };
+}
+
 async function main(): Promise<void> {
   loadEnvLocal();
+
+  // 0. requiredFacets is a config-consistency check on corpus.config.ts
+  //    itself, not a content problem — catch a typo'd key before any file
+  //    is even read.
+  for (const key of corpusConfig.requiredFacets) {
+    if (!(key in corpusConfig.facets)) {
+      fail(`corpus.config.ts requiredFacets lists "${key}", but facets has no such key`);
+    }
+  }
 
   // 1. Collections: content/ directories and corpus.config.ts must agree in
   //    both directions — a mismatch is always a consumer mistake worth naming.
@@ -146,16 +184,21 @@ async function main(): Promise<void> {
   }
 
   // 2. Parse and validate every doc (config order, then filename order —
-  //    deterministic artifact ordering).
+  //    deterministic artifact ordering). Each collection's _index.md is
+  //    parsed separately, for its container page, and never treated as a doc.
   const docs: DocMeta[] = [];
   const bodies = new Map<string, string>();
   const sources: Record<string, { frontmatterText: string; body: string }> = {};
+  const collectionPages: Record<string, CollectionMeta> = {};
   for (const { slug } of corpusConfig.collections) {
+    collectionPages[slug] = parseCollectionIndex(slug);
     const files = fs
       .readdirSync(path.join(CONTENT_DIR, slug))
-      .filter((f) => f.endsWith(".md"))
+      .filter((f) => f.endsWith(".md") && f !== COLLECTION_INDEX_FILE)
       .sort();
-    if (files.length === 0) fail(`content/${slug}/ contains no markdown files`);
+    if (files.length === 0) {
+      fail(`content/${slug}/ contains no markdown docs (besides ${COLLECTION_INDEX_FILE})`);
+    }
     for (const file of files) {
       const { meta, body, frontmatterText } = parseDoc(slug, file);
       const key = `${meta.collection}/${meta.docSlug}`;
@@ -295,6 +338,7 @@ async function main(): Promise<void> {
     embeddingModel: embeddings.model,
     dimensions: embeddings.dimensions,
     collections: corpusConfig.collections,
+    collectionPages,
     docs,
     chunks: finalChunks,
     sources,

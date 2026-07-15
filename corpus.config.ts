@@ -1,20 +1,31 @@
 import type { CorpusConfig } from "@/lib/corpus/types";
 
 /**
- * [PLACEHOLDER] Everything in this file describes the example Verdant corpus
- * (a fictional smart-terrarium automation platform). When you adopt this
- * template, replace the values below to match your own content — collections
- * must mirror the directories under content/, and facet vocabularies must
- * cover the values your docs' frontmatter uses.
+ * [PLACEHOLDER] Fill in your own identity, collections, and facet vocabulary
+ * below. Collections must mirror the directories under content/, and facet
+ * vocabularies must cover the values your docs' frontmatter uses — see the
+ * scaffolding file in each content/ collection directory for the expected
+ * frontmatter shape.
  *
- * Nothing about collections or facets is hardcoded anywhere else: components,
- * the ingest script, and the retrieval pipeline all read this file.
+ * Nothing about identity, collections, or facets is hardcoded anywhere else:
+ * components, the ingest script, and the retrieval pipeline all read this file.
  */
 const corpusConfig: CorpusConfig = {
-  siteName: "Verdant Docs",
-  greeting: "Ask anything about the Verdant platform.",
+  siteName: "Your Site Name",
+  greeting: "Ask anything about my work.",
 
-  // Display order for nav tabs and the forest view.
+  identity: {
+    name: "Your Name",
+    role: "Your role or tagline",
+    bio: "One sentence about who you are and what this corpus covers.",
+    links: [
+      { label: "Email", href: "mailto:you@example.com" },
+      { label: "GitHub", href: "https://github.com/you" },
+    ],
+  },
+
+  // Display order for nav tabs and the forest view. Each slug needs a
+  // matching directory under content/.
   collections: [
     { slug: "guides", label: "Guides" },
     { slug: "api-reference", label: "API Reference" },
@@ -24,7 +35,9 @@ const corpusConfig: CorpusConfig = {
   ],
 
   // Facet vocabulary. Frontmatter values outside these lists fail ingest;
-  // the Analyze node only extracts filters from this vocabulary.
+  // the Analyze node only extracts filters from this vocabulary. doc_type is
+  // a generic starting example (one value per collection above) — add your
+  // own facets freely; nothing about facet names is hardcoded.
   facets: {
     doc_type: [
       "guide",
@@ -33,14 +46,15 @@ const corpusConfig: CorpusConfig = {
       "troubleshooting",
       "release-notes",
     ],
-    module: ["sensors", "watering", "lighting", "hub"],
   },
 
+  // Facet keys ingest requires every doc to declare. Empty by default: no
+  // facet is mandatory unless you list its key here.
+  requiredFacets: [],
+
   suggestedPrompts: [
-    "How do I calibrate a soil-moisture sensor?",
-    "What webhook events does Verdant send?",
-    "Why does my misting schedule skip cycles?",
-    "What changed in the 2.5 release?",
+    "What's covered in the guides?",
+    "How is this site built?",
   ],
 
   // Below this width the RAG Panel stacks beneath the thread.

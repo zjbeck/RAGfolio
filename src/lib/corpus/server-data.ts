@@ -1,5 +1,5 @@
 import { loadCorpus } from "./retrieval";
-import type { Chunk, CollectionConfig, DocMeta, DocSource } from "./types";
+import type { Chunk, CollectionConfig, CollectionMeta, DocMeta, DocSource } from "./types";
 
 /**
  * Server-only accessors over the ingest artifact and raw content files.
@@ -30,24 +30,43 @@ export interface NavTab {
 }
 
 /**
- * Nav tabs: one per collection, each linking to its first document (the spec
- * defines per-doc pages, not collection indexes). Shared by the home page and
- * the doc pages.
+ * Nav tabs: one per collection, each linking to that collection's index page
+ * (a container: title + description + a grid of its docs). Shared by the
+ * home page and the doc pages.
  */
 export function getNavTabs(): NavTab[] {
   const corpus = loadCorpus();
-  return corpus.collections.map((collection) => {
-    const first = corpus.docs.find((d) => d.collection === collection.slug);
-    return {
-      slug: collection.slug,
-      label: collection.label,
-      href: first ? `/docs/${collection.slug}/${first.docSlug}` : "/",
-    };
-  });
+  return corpus.collections.map((collection) => ({
+    slug: collection.slug,
+    label: collection.label,
+    href: `/docs/${collection.slug}`,
+  }));
 }
 
 export function getCollectionLabel(slug: string): string {
   return loadCorpus().collections.find((c) => c.slug === slug)?.label ?? slug;
+}
+
+/** Params for generateStaticParams on the collection-index route. */
+export function getCollectionParams(): { collection: string }[] {
+  return loadCorpus().collections.map((c) => ({ collection: c.slug }));
+}
+
+export function getCollectionMeta(slug: string): CollectionMeta | undefined {
+  return loadCorpus().collectionPages[slug];
+}
+
+export interface CollectionDocSummary {
+  docSlug: string;
+  title: string;
+  description: string;
+}
+
+/** Docs in a collection, in ingest order — the thumbnail grid on its index page. */
+export function getCollectionDocs(slug: string): CollectionDocSummary[] {
+  return loadCorpus()
+    .docs.filter((d) => d.collection === slug)
+    .map((d) => ({ docSlug: d.docSlug, title: d.title, description: d.description }));
 }
 
 /** Params for generateStaticParams on the doc route. */

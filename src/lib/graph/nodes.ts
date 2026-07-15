@@ -69,8 +69,16 @@ export async function analyze(
   config?: RunnableConfig
 ): Promise<StateUpdate> {
   const schema = buildAnalyzeSchema();
-  const vocabulary = Object.entries(corpusConfig.facets)
-    .map(([key, values]) => `- ${key}: ${values.join(", ")}`)
+  // Guidance is templated entirely from corpus.config.ts's declared facets —
+  // no facet name or example is hardcoded here (ABSTRACTION_AUDIT.md A1). Each
+  // line shows a real allowed value or two from that facet's own vocabulary,
+  // so the model gets a concrete, schema-derived example regardless of what
+  // facets a consumer defines.
+  const facetGuidance = Object.entries(corpusConfig.facets)
+    .map(([key, values]) => {
+      const sample = values.slice(0, 2).join(" or ");
+      return `- ${key}: allowed values are ${values.join(", ")}. Set only if the question explicitly names a matching value (e.g., ${sample}); otherwise null.`;
+    })
     .join("\n");
 
   const result = await chatModel(0)
@@ -81,13 +89,11 @@ export async function analyze(
           role: "system",
           content:
             `You classify questions asked of a documentation site and extract a metadata filter.\n` +
-            `Available facets and their only allowed values:\n${vocabulary}\n\n` +
-            `Filters narrow the search — a wrong filter hides the right answer. Set a facet ` +
-            `only when the question EXPLICITLY names it: a subject-matter facet needs the ` +
-            `subject named ("soil-moisture sensor" → module: sensors), and doc_type needs a ` +
-            `document kind named ("in the release notes", "the API reference for…"). ` +
-            `Question phrasing is not a doc_type: "how do I…" does NOT mean guide. ` +
-            `When in doubt, null — retrieval over everything beats retrieval over the wrong slice.`,
+            `Available facets:\n${facetGuidance}\n\n` +
+            `Filters narrow the search — a wrong filter hides the right answer. Only set a facet ` +
+            `when the question explicitly names a matching value; how the question is phrased is ` +
+            `not itself evidence for any facet value. When in doubt, leave it null — retrieval over ` +
+            `everything beats retrieval over the wrong slice.`,
         },
         { role: "user", content: state.question },
       ],
