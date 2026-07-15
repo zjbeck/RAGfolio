@@ -436,6 +436,59 @@ not just type-checked. Task 6 required no change — see its own entry.
   code to satisfy an already-met requirement would have been needless
   churn.
 
+## V2 Phase 6 — Copy, Credentialing & Docs (tasks 1–2)
+
+**Preview-tool submission artifact, recurring.** Mid-verification, the
+Send button/Enter-to-submit stopped registering through this environment's
+synthetic click/keyboard events — no network request fired at all, no
+console errors, button confirmed not disabled. This is the same class of
+issue as the Stage 5 build note ("last session's `requestSubmit()`
+workaround was a preview-tool artifact, not an a11y bug"): synthetic events
+from this tool don't reliably reach React's synthetic event system in every
+session. Workaround, confirmed working again here: set the textarea's value
+via the native `HTMLTextAreaElement.prototype` setter + dispatch a real
+`input` event (so React's controlled-value tracking picks it up), then call
+`form.requestSubmit()` directly. Recorded here a second time so a future
+session recognizes it immediately instead of re-diagnosing a false "the app
+is broken" alarm.
+
+**Separately, live Gemini instability during this same verification pass**
+(two consecutive `503 Service Unavailable: high demand` responses, one fast
+and one that hung ~90s before erroring) — confirmed via server logs as a
+real upstream condition, not a code issue, and incidentally good evidence
+the Phase 1 `maxRetries: 1` fix is doing its job even under real duress
+(failed in seconds on the second attempt, not minutes).
+
+Task 1 (UX copy pass) and task 2 (credential badge) verification, item by
+item:
+- **Credential badge**: live-verified in all three layout states (landing,
+  wide-active, narrow-active) via screenshot — same text and position below
+  the composer in each, reflecting the actually-active model
+  (`gemini-3.5-flash`) via `activeChatModel()`, not hardcoded.
+- **User message bubble**: live-verified via computed style —
+  `backgroundColor: rgb(244, 244, 245)` confirms `bg-surface-2`, not the old
+  `bg-accent-soft`.
+- **Chip collapse**: live-verified — chips present on landing, absent in
+  both active screenshots after sending. **Chip alignment**: already
+  correct (`justify-center`, confirmed both in code and in the landing
+  screenshot); nothing was actually broken here, per the punch list's own
+  phrasing ("weren't mentioned" as still-open).
+- **Ghost empty box removal**: live-verified across two different
+  active-state screenshots — Redirect (and Answer/Refuse, the untaken
+  branches) rendered label-only, no empty data box, while inactive.
+- **Icon-only toggle tooltips**: grepped exhaustively, not just the GitHub
+  fix — every icon-only interactive control in the app (GitHub link, theme-
+  mode toggle, theme-palette toggle; the forest's decorative SVG overlay is
+  `pointer-events-none` and not interactive) carries both `aria-label` and
+  `title`. Nothing beyond GitHub was open.
+- **Analyze/Redirect "intent:"/"topicality:" labeling** and the **legend
+  swatch reshape** (`h-2.5 w-2.5` → `h-2.5 w-4`, so it can't read as a radio
+  dot): verified via `tsc`/`eslint` and reasoned correctness (a one-line
+  template-string change; a Tailwind class swap), but **not** re-confirmed
+  with a fresh screenshot — Gemini's instability during this pass prevented
+  a clean completed run to screenshot against. Disclosed rather than
+  silently assumed correct.
+
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).
 - The spec places the greeting in corpus.config.ts but also says all
