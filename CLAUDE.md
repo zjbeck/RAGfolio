@@ -194,6 +194,71 @@ with its own module under `src/lib/providers/`.
 - `@langchain/groq@1.3.1` added as a pinned exact dependency (peer dep
   `@langchain/core ^1.1.30`, satisfied by this project's `1.2.1`).
 
+## V2 Phase 2 — Identity & Content Foundation
+
+Per ABSTRACTION_AUDIT.md §4, A1 and A2 were folded into the same pass as the
+Verdant-content removal rather than treated as separate cleanup — a
+content-only swap would have shipped a still-Verdant-coupled pipeline.
+
+- **Identity block**: `CorpusConfig.identity` (`name`, `role`, `bio`,
+  `links`) added to `types.ts`/`corpus.config.ts` — schema-shaped, not prose
+  (ABSTRACTION_AUDIT.md V2-15). ⚠️ **Not yet wired into any component.** No
+  phase in the V2 spec explicitly claims that surfacing, and the obvious
+  candidates (the landing greeting, a footer) overlap with Phase 4/5's
+  planned redesigns and Phase 6's credential badge — wiring it in now risked
+  colliding with work those phases own. Flagged rather than guessed at.
+- **Analyze prompt (A1 fix)**: facet guidance in `nodes.ts` is now templated
+  entirely from `corpus.config.ts`'s declared facets — each facet gets a line
+  built from its own real allowed values (`values.slice(0, 2).join(" or ")`),
+  replacing the old hardcoded `doc_type`/`module` names and Verdant examples
+  ("soil-moisture sensor", "the API reference for…"). The "phrasing isn't
+  evidence for a value" principle generalized from the old doc_type-specific
+  "how do I… does NOT mean guide" line.
+- **`requiredFacets` (A2 fix)**: `corpus.config.ts` now declares
+  `requiredFacets: string[]` (empty by default); `ingest.ts` enforces
+  membership generically instead of hardcoding `doc_type`. A config-
+  consistency check (every `requiredFacets` key must exist in `facets`) runs
+  once in `main()`, separate from the per-doc check.
+- **Collection index pages**: each collection directory needs a reserved
+  `_index.md` (title + description only) — parsed by
+  `parseCollectionIndex()` in `ingest.ts`, stored in the artifact as
+  `collectionPages` (keyed by slug), and **excluded from docs/chunks/
+  embedding/retrieval entirely**. New route `src/app/docs/[collection]/
+  page.tsx` + `CollectionView.tsx` render it as a container: title,
+  description, and a thumbnail grid of the collection's docs (from the
+  existing `DocMeta` list — no new per-doc data needed). `getNavTabs()` now
+  links here instead of to each collection's first doc (the old behavior,
+  and its "the spec defines per-doc pages, not collection indexes" comment,
+  is gone — that constraint no longer holds).
+- **Content scaffolding**: `content/` ships with the same 5 collection slugs
+  (they're generic docs-taxonomy labels — Guides, API Reference, Concepts,
+  Troubleshooting, Release Notes — not Verdant-specific, so kept rather than
+  invented a new taxonomy the spec never asked for) but zero Verdant prose.
+  Each collection has one `example-*.md` clearly marked `[PLACEHOLDER]`,
+  demonstrating real frontmatter shape, one facet (`doc_type`), and
+  heading-based chunking; `guides/example-guide.md` also demonstrates
+  `cross_links`. The shipped `facets` vocabulary dropped the old `module`
+  facet entirely (100% Verdant-specific, no generic replacement would be
+  less arbitrary than just removing it) and kept `doc_type` (generic,
+  structural) as the one demonstrative example.
+- **Regression test for A1+A2 (task 6), both halves verified live**: a
+  temporary fixture (`corpus.config.ts` + `content/notes/`, non-Verdant
+  `category`/`year` facets, `requiredFacets: ["category"]`) was swapped in
+  after staging the real Phase 2 files in the git index (so restoring via
+  `git checkout -- corpus.config.ts content/` was safe). Confirmed:
+  (1) `npm run ingest` succeeds against the fixture — A2; (2) removing the
+  required `category` facet from the one test doc fails ingest with a named,
+  config-driven error — proves `requiredFacets` is real enforcement, not
+  decorative; (3) a live Analyze-node call ("Is there a tutorial on
+  widgets?") against the fixture correctly extracted `category: "tutorial"`
+  using only the generic, schema-derived prompt — proves A1 is fixed for
+  genuinely arbitrary facet names, not just non-crashing. Fixture removed
+  and real scaffold restored before committing.
+- Unresolved gap surfaced, not fixed (out of scope for this phase):
+  `scripts/eval.ts` and `docs/evals.md` still reference Verdant-specific
+  content/questions. No phase in the V2 spec touches them; `npm run eval`
+  will not pass against the new empty scaffold until something does.
+
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).
 - The spec places the greeting in corpus.config.ts but also says all
