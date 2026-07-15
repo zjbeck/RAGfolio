@@ -53,6 +53,15 @@ export interface CorpusConfig {
   requiredFacets: string[];
   /** Suggested prompt chips shown under the chat input. */
   suggestedPrompts: string[];
+  /**
+   * GitHub repo link for the nav icon and how-it-works page
+   * (ABSTRACTION_AUDIT.md A5). `null` hides the icon and the repo link
+   * entirely — there's no sensible default to fall back to, so this is
+   * deliberately not optional.
+   */
+  repoUrl: string | null;
+  /** BCP 47 language tag for `<html lang>` (ABSTRACTION_AUDIT.md A7). */
+  lang: string;
   /** Below this viewport width the RAG Panel stacks behind a disclosure. */
   minViewportWidth: number;
   /** Retrieval count (cosine top-k). */

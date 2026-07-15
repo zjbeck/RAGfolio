@@ -53,12 +53,10 @@ When the corpus doesn't contain an answer, the site refuses and tells you what
 it checked — it never invents one. Every non-refusal answer ends with citations
 that deep-link to the exact section, which you can read in full (rendered or as
 raw source with its chunk boundaries).
-
----
-
-This site was built from the open-source **RAGfolio** template. Read the code,
-including this page, at [${REPO_URL}](${REPO_URL}).
-`;
+` +
+  (REPO_URL
+    ? `\n---\n\nThis site was built from the open-source **RAGfolio** template. Read the code,\nincluding this page, at [${REPO_URL}](${REPO_URL}).\n`
+    : "");
 
 export default function HowItWorks() {
   return (

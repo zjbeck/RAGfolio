@@ -149,6 +149,9 @@ function parseCollectionIndex(collection: string): CollectionMeta {
   return { title: fm.title.trim(), description: fm.description.trim() };
 }
 
+/** ABSTRACTION_AUDIT.md A5: warn (don't fail) if repoUrl still points here. */
+const UPSTREAM_TEMPLATE_REPO = "https://github.com/zjbeck/RAGfolio";
+
 async function main(): Promise<void> {
   loadEnvLocal();
 
@@ -159,6 +162,12 @@ async function main(): Promise<void> {
     if (!(key in corpusConfig.facets)) {
       fail(`corpus.config.ts requiredFacets lists "${key}", but facets has no such key`);
     }
+  }
+  if (corpusConfig.repoUrl === UPSTREAM_TEMPLATE_REPO) {
+    console.warn(
+      `⚠ corpus.config.ts's repoUrl still points at the template's own repo ` +
+        `(${UPSTREAM_TEMPLATE_REPO}) — set it to your own repository, or null to hide the GitHub icon.`
+    );
   }
 
   // 1. Collections: content/ directories and corpus.config.ts must agree in

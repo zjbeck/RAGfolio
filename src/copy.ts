@@ -26,6 +26,12 @@ export const copy = {
   /** Single source is corpus.config.ts; re-exported here so components only import copy. */
   greeting: corpusConfig.greeting,
 
+  /** SEO meta description (layout.tsx). [PLACEHOLDER] — write your own. */
+  seo: {
+    description:
+      "A portfolio/docs chatbot that answers only from its corpus and shows its retrieval work.",
+  },
+
   /** The password gate page. [PLACEHOLDER] — speak to your own reviewers. */
   gate: {
     title: "This portfolio is gated",
@@ -40,11 +46,13 @@ export const copy = {
 
   /** Top navigation. */
   nav: {
+    collections: "Collections",
     howItWorks: "How this site works",
     github: "View source on GitHub",
     home: "Home",
     themeMode: "Toggle light and dark",
     themePalette: "Toggle theme palette",
+    themePaletteUnavailable: "Add src/styles/theme.custom.css to enable a custom palette",
   },
 
   /** Landing composition (pre-query). */
@@ -100,7 +108,7 @@ export const copy = {
       sequence: "Sequence",
       raw: "Raw Trace",
       footnote:
-        "Live view of the retrieval pipeline. Toggle ‘Raw Trace’ for the underlying LangSmith data.",
+        "Live view of the retrieval pipeline. Toggle ‘Raw Trace’ for the underlying event data.",
       rawEmpty: "Raw event data appears here once a question is asked.",
     },
     /**

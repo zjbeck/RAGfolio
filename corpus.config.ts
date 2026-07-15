@@ -57,6 +57,15 @@ const corpusConfig: CorpusConfig = {
     "How is this site built?",
   ],
 
+  // Your repo, shown as the GitHub icon in the nav and linked from
+  // how-it-works. null hides the icon and link entirely — there's no
+  // sensible default, so this starts null rather than pointing at the
+  // template's own repo (ABSTRACTION_AUDIT.md A5).
+  repoUrl: null,
+
+  // <html lang> — set to your content's actual language.
+  lang: "en",
+
   // Below this width the RAG Panel stacks beneath the thread.
   minViewportWidth: 1280,
 

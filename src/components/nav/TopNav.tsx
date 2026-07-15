@@ -27,7 +27,7 @@ export function TopNav({ tabs }: { tabs: NavTab[] }) {
         {copy.siteName}
       </Link>
 
-      <nav className="flex items-center gap-1 text-sm" aria-label="Collections">
+      <nav className="flex items-center gap-1 text-sm" aria-label={copy.nav.collections}>
         {tabs.map((tab) => {
           const active = pathname.startsWith(`/docs/${tab.slug}`);
           return (
@@ -50,15 +50,17 @@ export function TopNav({ tabs }: { tabs: NavTab[] }) {
         <Link href="/how-it-works" className="text-muted hover:text-ink">
           {copy.nav.howItWorks}
         </Link>
-        <a
-          href={REPO_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={copy.nav.github}
-          className="text-muted hover:text-ink"
-        >
-          <GitHubIcon />
-        </a>
+        {REPO_URL && (
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={copy.nav.github}
+            className="text-muted hover:text-ink"
+          >
+            <GitHubIcon />
+          </a>
+        )}
         <ThemeToggles />
       </div>
     </header>

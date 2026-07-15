@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import corpusConfig from "@config";
 import { copy } from "@/copy";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -16,8 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: copy.siteName,
-  description:
-    "A portfolio/docs chatbot that answers only from its corpus and shows its retrieval work.",
+  description: copy.seo.description,
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang={corpusConfig.lang}
       // The no-FOUC script sets data-mode / data-palette on <html> before
       // React hydrates, so the client attributes won't match the server HTML.
       // This is the sanctioned use of suppressHydrationWarning (scoped to this

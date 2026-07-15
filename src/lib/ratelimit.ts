@@ -35,13 +35,23 @@ type LimiterKind = "chat" | "auth";
 
 const limiters = new Map<LimiterKind, Ratelimit>();
 
+/**
+ * Deployment discriminator for the Upstash keyspace (ABSTRACTION_AUDIT.md
+ * A6). Without this, Preview and Production sharing one Redis instance —
+ * the default way Vercel env vars get set — drain each other's rate limit.
+ * VERCEL_ENV is set automatically by Vercel ("production" | "preview" |
+ * "development"); local dev (unset) gets its own bucket too, rather than
+ * colliding with either if pointed at the same Redis DB.
+ */
+const DEPLOYMENT_SCOPE = process.env.VERCEL_ENV ?? "local";
+
 function limiterFor(kind: LimiterKind): Ratelimit {
   let limiter = limiters.get(kind);
   if (!limiter) {
     const redis = Redis.fromEnv();
     limiter = new Ratelimit({
       redis,
-      prefix: `ragfolio:${kind}`,
+      prefix: `ragfolio:${DEPLOYMENT_SCOPE}:${kind}`,
       limiter:
         kind === "auth"
           ? Ratelimit.slidingWindow(5, "60 s") // password guessing

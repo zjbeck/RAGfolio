@@ -67,11 +67,7 @@ export function ThemeToggles() {
         onClick={togglePalette}
         disabled={!HAS_CUSTOM_THEME}
         aria-label={copy.nav.themePalette}
-        title={
-          HAS_CUSTOM_THEME
-            ? copy.nav.themePalette
-            : "Add src/styles/theme.custom.css to enable a custom palette"
-        }
+        title={HAS_CUSTOM_THEME ? copy.nav.themePalette : copy.nav.themePaletteUnavailable}
         aria-pressed={palette === "custom"}
         className={`rounded-[var(--radius-sm)] p-1.5 ${
           palette === "custom" ? "text-accent" : "text-muted"
