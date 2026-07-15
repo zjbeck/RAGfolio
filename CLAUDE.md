@@ -436,7 +436,7 @@ not just type-checked. Task 6 required no change — see its own entry.
   code to satisfy an already-met requirement would have been needless
   churn.
 
-## V2 Phase 6 — Copy, Credentialing & Docs (tasks 1–2)
+## V2 Phase 6 — Copy, Credentialing & Docs
 
 **Preview-tool submission artifact, recurring.** Mid-verification, the
 Send button/Enter-to-submit stopped registering through this environment's
@@ -488,6 +488,44 @@ item:
   with a fresh screenshot — Gemini's instability during this pass prevented
   a clean completed run to screenshot against. Disclosed rather than
   silently assumed correct.
+
+### Task 3 — docs
+
+New guide: [`docs/providers.md`](../docs/providers.md), "Swapping
+providers" — documents both seams Phase 1 built (chat: `LLM_PROVIDER` +
+`chatModel()`'s `BaseChatModel` return type; embeddings: the
+`EmbeddingsAdapter` interface), plus how to add a third provider to each.
+This was the actual gap ABSTRACTION_AUDIT.md §2 flagged: the seams existed
+but nothing said so.
+
+New section in `using-this-template.md`: "The LangGraph pipeline", placed
+before the environment-variables walkthrough per spec — a short version of
+`architecture.md`'s pipeline section plus the config touchpoints
+(`facets`, `k`, `answerThinkingBudget`, `wholeDocChunkThreshold`) a reader
+is about to edit.
+
+**Also fixed, not explicitly asked for but load-bearing:** `README.md`,
+`using-this-template.md`, and `architecture.md` had all drifted materially
+out of date across Phases 1–5 — `README.md`'s "Gemini — no vector
+database" line, its Verdant-referencing CLI example, and its entire
+"Example corpus" section describing the removed Verdant docs; `using-this-
+template.md`'s frontmatter example (`module: onboarding`, a fully Verdant-
+specific facet) and its field list (`suggestedPrompts`, removed in Phase 5;
+missing `identity`/`requiredFacets`/`repoUrl`/`lang`, added in Phases 2–3)
+and stale `REPO_URL`/`src/lib/site.ts` pointer (moved to `corpus.config.ts`
+in Phase 3); `architecture.md`'s "six nodes" claim (now seven, with
+Redirect) and `GEMINI_API_KEY` references (renamed in Phase 1). Also fixed
+`updating.md`'s file-ownership table, which still pointed at `site.ts` as
+consumer-owned — it's a thin re-export now, not something to edit directly.
+Left `docs/evals.md` alone (still Verdant-shaped; flagged, not touched, in
+Phase 2 — no phase in this spec claims it) and `docs/theming.md`'s
+"Verdant" reference alone (the custom palette's own name, unrelated to the
+removed content).
+
+Leaving these stale while adding a new, correct "Swapping providers" guide
+next to them would have undercut the new guide's own credibility — a reader
+cross-referencing `architecture.md`'s six-node claim against the new guide's
+seven-node description would reasonably doubt both.
 
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).
