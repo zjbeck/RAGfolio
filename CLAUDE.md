@@ -296,6 +296,70 @@ Four independent ABSTRACTION_AUDIT.md findings, each verified via grep
   rather than `copy.ts`, consistent with how other structural config values
   are consumed elsewhere in this codebase).
 
+## V2 Phase 4 — RAG Panel & Retrieval Visualization Redesign
+
+A full redesign of `ForestView.tsx`, not a patch — all four decisions below
+were live-verified with a real pipeline run (not just type-checked), since a
+UI redesign that only compiles hasn't actually been verified.
+
+- **Cross-links default to `onSelect`, not `always`.** The old default
+  rendered every retrieved doc's links simultaneously as straight lines — an
+  illegible overlapping web once more than a couple of docs were retrieved.
+  `onSelect` (only the hovered/selected node's links render) was chosen over
+  a permanent highlight-only mode because it still lets a visitor *discover*
+  that cross-links exist by hovering around, rather than requiring them to
+  already know to select a specific node. Lines are now quadratic-bezier
+  curves (perpendicular control-point offset, capped at 40px of bow) with a
+  3px accent dot at each endpoint — "routed," not straight, with legible
+  endpoints, per the spec's own framing. Verified live: hovering a retrieved
+  node renders exactly one curved `<path>` (confirmed via its `d` attribute
+  containing a `Q` command) with two endpoint `<circle>`s, not the old
+  overlapping set.
+- **A genuine third node state: neutral.** Before Phase 4, a node was either
+  "retrieved" (accent) or "not retrieved" (dimmed) — before any query ran,
+  every node defaulted to the dimmed state, so dimming had no baseline to
+  demote *from*. `ForestView` now takes a `queried: boolean` prop
+  (`RetrievalGraph` passes `turn.started`); neutral reuses the same
+  `border-line`/`text-ink` tokens already used for ordinary UI elements
+  elsewhere (a doc card, a nav link) rather than introducing a new,
+  contrast-unverified token pair. Verified live via computed styles on real
+  DOM nodes post-query: the retrieved doc showed `--accent`/`--accent-soft`,
+  the three non-retrieved docs showed `--dim-line`/`--dim-ink` — genuinely
+  distinct, not just different class names. The neutral (pre-query) branch
+  itself is the same ternary, type-checked and lint-clean, but its exact
+  visual state wasn't independently screenshotted: it only exists in the
+  brief window between sending a message and the first stream event
+  arriving, which automated screenshot timing couldn't reliably catch — a
+  disclosed gap, not a skipped one, in the same spirit as the Stage 5
+  focus-ring verification note above.
+- **Layout: one collection per full-width row**, vertical scroll accepted
+  (the spec's own stated tradeoff) — replacing the old
+  `auto-fill, minmax(190px, 1fr)` grid of clusters. Docs within a collection
+  wrap in a `flex flex-wrap` row rather than a fixed 2-column grid, so node
+  width follows content instead of a rigid column count.
+- **Legend is now three states plus a cross-link explainer**, not a
+  two-swatch color key: "Not yet searched" / "Retrieved — matched this
+  question" / "Searched, not retrieved", plus a sentence explaining what a
+  line means. `copy.panel.forest.crossLink` existed before Phase 4 but was
+  never actually rendered anywhere (dead copy) — it's wired in now, reworded
+  from the terse "claim → evidence" into a real explanation.
+- **Scroll architecture: independent scrollable regions for panel vs.
+  thread (wide layout), whole-page scroll (narrow/stacked layout) — both
+  pre-existing and deliberately kept, not changed.** The actual "ad hoc per
+  view" bug was `RawTraceView`'s own private `max-h-80 overflow-auto` box,
+  nested a second scroll region inside whichever ambient one was already
+  active — the only one of the four sub-views (RAG Files, RAG Pipeline,
+  Sequence, Raw Trace) that did this. Removed; all four now rely solely on
+  the ambient scroll container, consistently.
+- **Raw Trace**: `whitespace-pre-wrap break-all` replaces the unwrapped
+  `<pre>` — `break-all` specifically (not just `break-words`) because a
+  chunk id or citation label can be one long token with no natural break
+  point. Verified live: a long `Retrieve` event's JSON genuinely wraps
+  mid-token (e.g. `"ancho` / `rId"`) rather than clipping or scrolling.
+  Per-step latency deltas (`Δ{ms}`) now sit alongside the existing cumulative
+  offset (`+{ms}`) on every line — verified live against a real run's actual
+  numbers (e.g. `Grade +3132ms (Δ2654ms)`), not just that the code compiles.
+
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).
 - The spec places the greeting in corpus.config.ts but also says all
