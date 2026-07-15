@@ -89,6 +89,22 @@ a package, resolve the current version (`npm view <pkg> version`) and pin it.
   two questions/minute on the free tier. Consequences: the eval harness must
   pace runs; interactive chat fails fast on 429 by design (a 48 s in-request
   retry would be worse UX than an honest error).
+- **`chatModel()`'s `ChatGoogleGenerativeAI` sets `maxRetries: 1`** (was
+  unset, defaulting to LangChain's `AsyncCaller` default of 6). Correction to
+  the record: the note above about chat "failing fast on 429 by design" was
+  aspirational, not actual, until this fix — a real 429 with a `Retry-After`
+  ≤60s is classified by `AsyncCaller` as `"wait"` and retried silently,
+  backing off across all three chat calls (Analyze, Grade, Answer) into a
+  multi-minute hang. On the live deploy this surfaced as
+  `FUNCTION_INVOCATION_TIMEOUT` (raising `maxDuration` 60→180 didn't help —
+  confirming it was retries, not raw slowness). `1` keeps a single quick
+  retry for a genuine transient blip without re-enabling the chain.
+  ⚠️ **Phase 1 of the provider-abstraction refactor (V2) must preserve
+  this.** When the Gemini chat call moves into its own provider adapter,
+  `maxRetries: 1` (or the equivalent bounded-retry behavior in whatever HTTP
+  client the adapter uses) has to travel with it — nothing fails a
+  type-check or test if it's dropped, and the multi-minute hang only
+  reappears under real sustained rate-limiting, not in dev.
 
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).

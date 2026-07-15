@@ -34,6 +34,11 @@ function chatModel(thinkingBudget: number): ChatGoogleGenerativeAI {
     // Without this, streamed chunks carry no usage_metadata and the
     // thinking-off assertion would have nothing to check for Answer.
     streamUsage: true,
+    // Default is 6: on a sustained 429, LangChain's AsyncCaller treats a
+    // short retry-delay as "just wait" and silently backs off across all
+    // 3 chat calls in the graph, hanging well past the function timeout.
+    // 1 allows a single quick retry for a genuine transient blip only.
+    maxRetries: 1,
   });
 }
 
