@@ -259,6 +259,43 @@ content-only swap would have shipped a still-Verdant-coupled pipeline.
   content/questions. No phase in the V2 spec touches them; `npm run eval`
   will not pass against the new empty scaffold until something does.
 
+## V2 Phase 3 — Hardening & Hygiene
+
+Four independent ABSTRACTION_AUDIT.md findings, each verified via grep
+(no remaining hardcoded instance) after the fix:
+
+- **A4**: `copy.ts`'s panel footnote no longer names LangSmith — reworded
+  vendor-neutral ("...for the underlying event data") rather than
+  conditioning on the tracing flag, since the flag isn't otherwise plumbed
+  into any client component and a wording fix is simpler and always
+  accurate either way.
+- **A5**: `CorpusConfig.repoUrl: string | null` replaces the hardcoded
+  constant in `site.ts` (now a thin re-export, same pattern as `copy.ts`
+  re-exporting `siteName`/`greeting`). Ships `null` by default — no GitHub
+  icon, no repo link on how-it-works — rather than pointing at the
+  template's own repo, which is the actual A5 bug (a forgotten deploy
+  silently sending visitors to `zjbeck/RAGfolio`). `ingest.ts` warns
+  (doesn't fail) at build time if `repoUrl` still equals the upstream
+  template URL — verified live both ways: warns when set to it, silent
+  when `null`. `TopNav.tsx`'s GitHub icon and `how-it-works/page.tsx`'s
+  closing repo-link paragraph are both conditional on `REPO_URL` now.
+- **A6**: Upstash keyspace prefix is now `` ragfolio:${VERCEL_ENV ?? "local"}:${kind} ``
+  — Preview and Production no longer share a rate-limit bucket when they
+  share one Redis instance (the default way Vercel env vars get set,
+  per the audit). `VERCEL_ENV` is a Vercel system var, set automatically —
+  no consumer configuration needed. Local dev (unset) gets `"local"`,
+  distinct from both.
+- **A7**: four strings moved out of components/pages that had them
+  hardcoded, contradicting the project's own "components never contain
+  literal user-facing strings" rule: the theme-toggle tooltip that leaked
+  a source file path (now `copy.nav.themePaletteUnavailable`), the SEO
+  meta description (now `copy.seo.description`), `TopNav`'s
+  `aria-label="Collections"` (now `copy.nav.collections`), and `lang="en"`
+  (now `CorpusConfig.lang`, read directly in `layout.tsx` — a locale/config
+  value, not visitor-facing microcopy, so it goes through `corpus.config.ts`
+  rather than `copy.ts`, consistent with how other structural config values
+  are consumed elsewhere in this codebase).
+
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).
 - The spec places the greeting in corpus.config.ts but also says all
