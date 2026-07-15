@@ -27,20 +27,24 @@ directory, validates frontmatter against `corpus.config.ts`, and:
   `rehype-slug` puts on the rendered page, so a citation deep-links to its
   section with no mapping table. Unchanged content keeps the same ID across
   builds.
-- **Embeds** each chunk with `gemini-embedding-2` (768 dimensions).
-- **Emits one static JSON** — chunks, embeddings, doc metadata, and each doc's
-  raw source (for the raw view). Nothing reads `content/` at runtime.
+- **Embeds** each chunk via the embeddings adapter (`gemini-embedding-2`, 768
+  dimensions, today — see [providers.md](./providers.md) for the seam).
+- **Emits one static JSON** — chunks, embeddings, doc metadata, each
+  collection's index-page title/description, and each doc's raw source (for
+  the raw view). Nothing reads `content/` at runtime.
 
 The artifact is a build product (gitignored). `npm run build` runs ingest
-first, so `GEMINI_API_KEY` must be present at build time.
+first, so `GEMINI_EMBEDDING_API_KEY` must be present at build time.
 
 ## The pipeline (LangGraph.js)
 
-Six nodes over a typed state `{ question, filter, chunks, verdict, route,
-answer, citations, usage }`:
+A typed state (`question`, `topicality`, `filter`, `chunks`, `verdict`,
+`route`, `answer`, `citations`, `usage`) flows through:
 
-1. **Analyze** — classify intent and extract a facet filter from the config
-   vocabulary (self-query style). Thinking off.
+1. **Analyze** — classify topicality (on-topic / off-topic / adversarial),
+   intent, and a facet filter from the config vocabulary (self-query style).
+   Thinking off. Only `on-topic` continues to Filter; anything else routes
+   straight to Redirect.
 2. **Filter** — narrow the corpus by facets. A filter that matches nothing is
    dropped and recorded as relaxed, rather than forcing a refusal on an
    answerable question.
@@ -52,6 +56,10 @@ answer, citations, usage }`:
 6. **Answer** — a cited reply grounded only in the retrieved chunks; thinking
    budget from config (default 0). **Refuse** — templated honest copy that
    names the collections and filter searched. Zero fabrication.
+7. **Redirect** — Analyze's off-topic/adversarial short-circuit. Templated,
+   distinct wording for the two cases, never reaches Filter/Retrieve/Grade —
+   one LLM call total instead of two or three for a question that was never
+   about the corpus.
 
 Thinking is disabled where correctness doesn't need it (Analyze, Grade) and is a
 tunable budget on Answer. See [evals.md](./evals.md) for A/B'ing that budget.
@@ -101,7 +109,8 @@ src/
     how-it-works            example self-documentation (replace it)
   lib/
     graph/                  state, nodes, graph assembly
-    corpus/                 chunker, embedding, retrieval, server-data
+    corpus/                 chunker, retrieval, server-data
+    providers/              chat + embeddings adapters (see providers.md)
     panel/                  turning stream events into panel state
   components/               nav, chat, panel, docs, ui
   styles/theme.custom.css   optional custom palette

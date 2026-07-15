@@ -3,7 +3,7 @@
 A template for a password-gateable portfolio or docs chatbot that answers
 **only** from its own corpus, cites every claim, and shows its retrieval work
 in a live side panel. Next.js (App Router) + TypeScript, LangGraph.js, and
-Gemini — **no vector database**.
+Gemini or Groq for chat (embeddings: Gemini) — **no vector database**.
 
 Content is embedded once at build time into a single static JSON file; at
 runtime, retrieval is in-memory cosine similarity over that file. The corpus is
@@ -16,10 +16,13 @@ variables, and deploy that on Vercel.
 
 ## What you get
 
-- **Grounded answers with citations.** A six-node LangGraph pipeline
+- **Grounded answers with citations.** A LangGraph pipeline
   (Analyze → Filter → Retrieve → Grade → Route → Answer/Refuse) that refuses
   honestly when the corpus has no answer, naming what it searched — zero
-  fabrication by construction.
+  fabrication by construction. Off-topic and adversarial questions short-circuit
+  straight from Analyze to an honest Redirect, never touching the corpus.
+- **Swappable chat provider.** Gemini (default) or Groq, behind one interface —
+  see [providers.md](./docs/providers.md).
 - **A live RAG panel.** The same stream that renders the answer drives a panel
   showing the corpus as a forest of documents, the pipeline as a row of nodes
   with per-step results, and a plain-language step-by-step with a raw-trace
@@ -51,15 +54,18 @@ npm run dev        # http://localhost:3000
 Chat provider defaults to Gemini (`LLM_PROVIDER=gemini`, pre-set in
 `.env.example`); see [environment.md](./docs/environment.md) to switch to Groq.
 
-Prefer the terminal? `npm run ask -- "What webhook events does Verdant send?"`
-runs the whole pipeline and prints the node events and the cited answer.
+Prefer the terminal? `npm run ask -- "What does the example guide cover?"` runs
+the whole pipeline and prints the node events and the cited answer.
 
 ## Make it yours
 
 1. **Generate your repo** with *Use this template*, then clone it.
-2. **Replace the corpus:** delete `content/**`, add your own markdown, and edit
-   [`corpus.config.ts`](./corpus.config.ts) (site name, greeting, collections,
-   facet vocabulary, suggested prompts).
+2. **Replace the corpus:** each collection ships one `_index.md` (title +
+   description for its index page) and one `example-*.md` placeholder doc —
+   replace the placeholders with your own content, then edit
+   [`corpus.config.ts`](./corpus.config.ts) (site name, greeting, identity,
+   collections, facet vocabulary, `requiredFacets`, repo link). Suggested
+   prompt chips aren't configured — they're derived from your content.
 3. **Rewrite the microcopy** in [`src/copy.ts`](./src/copy.ts) and the
    `/how-it-works` page.
 4. **Set environment variables** and **deploy on Vercel** — its GitHub
@@ -73,6 +79,7 @@ Full walkthrough: **[docs/using-this-template.md](./docs/using-this-template.md)
 | --- | --- |
 | [Using this template](./docs/using-this-template.md) | Generate a repo, add content, connect Vercel |
 | [Architecture](./docs/architecture.md) | The pipeline, the ingest artifact, how the stream drives the panel |
+| [Swapping providers](./docs/providers.md) | The chat and embeddings seams, and how to add another provider |
 | [Environment variables](./docs/environment.md) | Every variable, what it enables, and what happens when it's absent |
 | [Theming](./docs/theming.md) | Tokens, adding a custom palette, graceful degradation |
 | [Evals](./docs/evals.md) | Writing cases, running locally and on LangSmith, A/B on thinking budget |
@@ -82,12 +89,13 @@ Project conventions and the running log of design decisions live in
 [CLAUDE.md](./CLAUDE.md). The `/how-it-works` page is example
 self-documentation of the pipeline that you replace with your own.
 
-## Example corpus
+## Example content
 
-The template ships with **Verdant**, a fictional smart-terrarium automation
-platform (~16 docs across Guides, API Reference, Concepts, Troubleshooting, and
-Release Notes). It exists to demo the tool — filtering, cross-links, refusals —
-and is entirely made up. Replace it.
+The template ships with a handful of `[PLACEHOLDER]`-marked example docs, one
+per collection (Guides, API Reference, Concepts, Troubleshooting, Release
+Notes) — enough to demo the tool (filtering, cross-links, refusals, the forest
+view) without any real content baked in. They exist to show the expected
+frontmatter shape and chunking behavior; replace them with your own.
 
 ## License
 

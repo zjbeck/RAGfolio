@@ -50,7 +50,7 @@ Merges are cleanest when you know which files you own:
 | `corpus.config.ts` | `src/lib/corpus/**` (ingest, retrieval) |
 | `src/copy.ts` | `src/components/**` (UI) |
 | `src/styles/theme.custom.css` | `scripts/**` |
-| `src/lib/site.ts`, `.env.local` | `src/app/api/**` (routes) |
+| `.env.local` | `src/app/api/**` (routes), `src/lib/providers/**` |
 
 If you've edited a component directly rather than through `corpus.config.ts` or
 `src/copy.ts`, that's where merge conflicts will land — another reason to keep
