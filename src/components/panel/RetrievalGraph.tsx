@@ -48,7 +48,7 @@ export function RetrievalGraph({
         />
       </div>
       {view === "files" ? (
-        <ForestView forest={forest} retrievedDocIds={retrievedDocIds} />
+        <ForestView forest={forest} retrievedDocIds={retrievedDocIds} queried={turn.started} />
       ) : (
         <PipelineView turn={turn} />
       )}

@@ -135,9 +135,11 @@ export const copy = {
     } as Record<RagNodeName, string>,
     forest: {
       open: "Open document ↗",
-      retrieved: "Retrieved",
-      notRetrieved: "Not retrieved",
-      crossLink: "claim → evidence",
+      neutral: "Not yet searched",
+      retrieved: "Retrieved — matched this question",
+      notRetrieved: "Searched, not retrieved",
+      crossLink:
+        "A line connects a claim to the evidence doc it cites. Hover or select a document to reveal its links.",
     },
     /** Pipeline branch labels; the six node names come from nodeLabels below. */
     pipeline: {

@@ -17,25 +17,45 @@ interface Center {
   y: number;
 }
 
+/** Quadratic bezier control point offset perpendicular to the line's midpoint. */
+function curvedPath(a: Center, b: Center): { d: string; mid: Center } {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const bow = Math.min(dist * 0.15, 40);
+  const cx = mx - (dy / dist) * bow;
+  const cy = my + (dx / dist) * bow;
+  return { d: `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`, mid: { x: cx, y: cy } };
+}
+
 /**
- * The RAG Files forest: each collection is an independent root laid out in a
- * rectangular grid of clusters (not radial, not one unified tree). Retrieved
- * docs highlight in accent; the rest dim via dedicated --dim tokens (never
- * opacity, so they stay AA-legible). Cross-links from frontmatter draw as thin
- * lines between clusters for retrieved docs.
+ * The RAG Files forest: one collection per full-width row (vertical scroll is
+ * the accepted tradeoff for legibility — see CLAUDE.md's V2 Phase 4 note).
+ * Each node has three visual states, not two: neutral (nothing has been
+ * searched yet), retrieved (accent), and dimmed (searched, not retrieved) —
+ * dimming only ever demotes from the neutral baseline once a query has run,
+ * it is never the default appearance.
  *
- * displayMode (always | onSelect | off) lets tests switch link rendering
- * cheaply; default "always". Link labels reveal when an endpoint node is
- * hovered or selected (hovering a thin SVG line is unreliable). Selecting a
- * node opens a tooltip card with a link to the document.
+ * Cross-links default to onSelect: only the links touching the
+ * hovered/selected node render, as gently curved paths with a dot at each
+ * endpoint. Rendering every retrieved doc's links simultaneously as straight
+ * lines (the old "always" default) produced an illegible overlapping web;
+ * onSelect was chosen over a permanent highlight-only mode because it still
+ * lets a visitor discover which docs *have* cross-links by hovering, not just
+ * see them after already knowing to select one.
  */
 export function ForestView({
   forest,
   retrievedDocIds,
-  displayMode = "always",
+  queried,
+  displayMode = "onSelect",
 }: {
   forest: ForestData;
   retrievedDocIds: Set<string>;
+  /** Whether a query has run yet — gates the neutral vs retrieved/dimmed states. */
+  queried: boolean;
   displayMode?: ForestDisplayMode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -111,32 +131,34 @@ export function ForestView({
     <div ref={containerRef} className="relative">
       {/* Cross-link overlay, behind the nodes. */}
       <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" aria-hidden>
-        {segments.map((s) => (
-          <g key={`${s.from}->${s.to}`}>
-            <line
-              x1={s.a.x}
-              y1={s.a.y}
-              x2={s.b.x}
-              y2={s.b.y}
-              stroke={s.touches ? "var(--accent)" : "var(--dim-line)"}
-              strokeWidth={s.touches ? 1.5 : 1}
-            />
-            {s.touches && (
-              <text
-                x={(s.a.x + s.b.x) / 2}
-                y={(s.a.y + s.b.y) / 2 - 4}
-                textAnchor="middle"
-                className="fill-muted font-mono text-[9px]"
-              >
-                {s.label}
-              </text>
-            )}
-          </g>
-        ))}
+        {segments.map((s) => {
+          const { d, mid } = curvedPath(s.a, s.b);
+          const stroke = s.touches ? "var(--accent)" : "var(--dim-line)";
+          return (
+            <g key={`${s.from}->${s.to}`}>
+              <path d={d} fill="none" stroke={stroke} strokeWidth={s.touches ? 1.5 : 1} />
+              {s.touches && (
+                <>
+                  <circle cx={s.a.x} cy={s.a.y} r={3} fill="var(--accent)" />
+                  <circle cx={s.b.x} cy={s.b.y} r={3} fill="var(--accent)" />
+                  <text
+                    x={mid.x}
+                    y={mid.y - 4}
+                    textAnchor="middle"
+                    className="fill-muted font-mono text-[9px]"
+                  >
+                    {s.label}
+                  </text>
+                </>
+              )}
+            </g>
+          );
+        })}
       </svg>
 
-      {/* Clusters, one per collection, in a rectangular grid. */}
-      <div className="relative z-10 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(190px,1fr))]">
+      {/* One full-width row per collection; vertical scroll is the accepted
+          tradeoff for legibility (owned by the ambient panel scroll region). */}
+      <div className="relative z-10 flex flex-col gap-3">
         {forest.collections.map((collection) => {
           const docs = docsByCollection.get(collection.slug) ?? [];
           return (
@@ -147,11 +169,17 @@ export function ForestView({
               <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
                 {collection.label}
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {docs.map((doc) => {
                   const id = docId(doc);
-                  const retrieved = retrievedDocIds.has(id);
+                  const retrieved = queried && retrievedDocIds.has(id);
+                  const dimmed = queried && !retrievedDocIds.has(id);
                   const isSelected = selected === id;
+                  const stateClass = retrieved
+                    ? "border-accent bg-accent-soft text-ink"
+                    : dimmed
+                      ? "border-dim-line text-dim-ink hover:text-ink"
+                      : "border-line text-ink hover:border-line-strong"; // neutral: pre-query baseline
                   return (
                     <button
                       key={id}
@@ -162,11 +190,9 @@ export function ForestView({
                       onMouseEnter={() => setHovered(id)}
                       onMouseLeave={() => setHovered((h) => (h === id ? null : h))}
                       onClick={() => setSelected((s) => (s === id ? null : id))}
-                      className={`truncate rounded-[var(--radius-sm)] border px-2 py-1.5 text-left text-[11px] leading-tight transition-colors ${
-                        retrieved
-                          ? "border-accent bg-accent-soft text-ink"
-                          : "border-dim-line text-dim-ink hover:text-ink"
-                      } ${isSelected ? "ring-2 ring-accent" : ""}`}
+                      className={`max-w-[220px] truncate rounded-[var(--radius-sm)] border px-2 py-1.5 text-left text-[11px] leading-tight transition-colors ${stateClass} ${
+                        isSelected ? "ring-2 ring-accent" : ""
+                      }`}
                       title={doc.title}
                     >
                       {doc.title}
@@ -196,8 +222,13 @@ export function ForestView({
         </div>
       )}
 
-      {/* Legend. */}
-      <div className="mt-3 flex items-center gap-4 text-[11px] text-muted">
+      {/* Legend: an actual visual grammar, not just a color key — explains
+          what each state means and what the cross-link lines represent. */}
+      <div className="mt-3 space-y-1.5 text-[11px] text-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm border border-line" />
+          {copy.panel.forest.neutral}
+        </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm border border-accent bg-accent-soft" />
           {copy.panel.forest.retrieved}
@@ -206,6 +237,7 @@ export function ForestView({
           <span className="h-2.5 w-2.5 rounded-sm border border-dim-line" />
           {copy.panel.forest.notRetrieved}
         </span>
+        <p className="pt-1 text-dim-ink">{copy.panel.forest.crossLink}</p>
       </div>
     </div>
   );
