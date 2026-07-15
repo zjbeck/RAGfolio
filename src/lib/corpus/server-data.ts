@@ -69,6 +69,23 @@ export function getCollectionDocs(slug: string): CollectionDocSummary[] {
     .map((d) => ({ docSlug: d.docSlug, title: d.title, description: d.description }));
 }
 
+/**
+ * Suggested-prompt chips, derived from the real corpus (V2 Phase 5 task 4) —
+ * previously static, ungrounded copy in corpus.config.ts. One per collection,
+ * from that collection's first doc title, in collection order; capped so a
+ * corpus with many collections doesn't crowd the landing composer.
+ */
+export function getSuggestedPrompts(limit = 4): string[] {
+  const corpus = loadCorpus();
+  const prompts: string[] = [];
+  for (const collection of corpus.collections) {
+    const first = corpus.docs.find((d) => d.collection === collection.slug);
+    if (first) prompts.push(`What does "${first.title}" cover?`);
+    if (prompts.length >= limit) break;
+  }
+  return prompts;
+}
+
 /** Params for generateStaticParams on the doc route. */
 export function getDocParams(): { collection: string; slug: string }[] {
   return loadCorpus().docs.map((d) => ({

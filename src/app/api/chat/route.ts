@@ -59,6 +59,7 @@ function eventFor(
         ...base,
         node,
         intent: update.intent ?? null,
+        topicality: update.topicality ?? null,
         filter: update.filter ?? null,
       };
     case "Filter":
@@ -88,6 +89,12 @@ function eventFor(
         node,
         filter: update.filter ?? null,
         matchCount: update.filterMatchCount ?? 0,
+      };
+    case "Redirect":
+      return {
+        ...base,
+        node,
+        topicality: update.topicality === "adversarial" ? "adversarial" : "off-topic",
       };
     default:
       return null;
@@ -182,9 +189,9 @@ export async function POST(request: Request): Promise<Response> {
                 data: { citations: update.citations },
               });
             }
-            if (node === "Refuse" && update.answer) {
-              // Refusal text is authored copy from state — same text channel
-              // the model's tokens would use.
+            if ((node === "Refuse" || node === "Redirect") && update.answer) {
+              // Refusal/redirect text is authored copy from state — same text
+              // channel the model's tokens would use.
               startText();
               writer.write({ type: "text-delta", id: TEXT_ID, delta: update.answer });
             }

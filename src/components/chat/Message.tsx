@@ -51,7 +51,12 @@ export function Message({
   return (
     <div className="space-y-3">
       {isRefusal && (
-        <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+        // Re-weighted (V2 Phase 5 task 5): honest refusal is this site's core
+        // thesis, not incidental chrome — the old border-line/text-muted
+        // treatment under-signaled that. Reuses the same border-accent/
+        // bg-accent-soft/text-ink combination the forest's "retrieved" state
+        // already uses (verified AA elsewhere), not a new, unverified color.
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink">
           {copy.chat.refusalTag}
         </span>
       )}

@@ -22,7 +22,13 @@ import { Thread } from "./Thread";
  * stacks beneath the thread behind a "Show RAG Panel" disclosure. All motion
  * is disabled under prefers-reduced-motion via the global rule.
  */
-export function ChatApp({ forest }: { forest: ForestData }) {
+export function ChatApp({
+  forest,
+  suggestedPrompts,
+}: {
+  forest: ForestData;
+  suggestedPrompts: string[];
+}) {
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const wide = useMediaQuery(`(min-width: ${corpusConfig.minViewportWidth}px)`);
@@ -53,7 +59,6 @@ export function ChatApp({ forest }: { forest: ForestData }) {
       status={status}
     />
   );
-  const chips = <Chips onPick={send} disabled={busy} />;
   // The server's onError return value arrives here as error.message — quota
   // exhaustion and a generic failure are already distinct strings by the time
   // they reach the client; this just displays whichever one it was.
@@ -93,7 +98,6 @@ export function ChatApp({ forest }: { forest: ForestData }) {
         <div className="mx-auto w-full max-w-2xl space-y-3 px-5 pb-5 pt-2">
           {errorNote}
           {composer}
-          {chips}
           {activeFootnote}
         </div>
       </div>
@@ -124,7 +128,6 @@ export function ChatApp({ forest }: { forest: ForestData }) {
             <div className="space-y-3 pb-5 pt-2">
               {errorNote}
               {composer}
-              {chips}
               {activeFootnote}
             </div>
           </>
@@ -134,7 +137,7 @@ export function ChatApp({ forest }: { forest: ForestData }) {
               {copy.greeting}
             </h1>
             {composer}
-            {chips}
+            <Chips prompts={suggestedPrompts} onPick={send} disabled={busy} />
             <p className="mx-auto max-w-md text-center text-xs text-muted">
               {copy.landing.footnote}
             </p>

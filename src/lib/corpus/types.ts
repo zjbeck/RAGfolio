@@ -51,8 +51,6 @@ export interface CorpusConfig {
    * `facets`.
    */
   requiredFacets: string[];
-  /** Suggested prompt chips shown under the chat input. */
-  suggestedPrompts: string[];
   /**
    * GitHub repo link for the nav icon and how-it-works page
    * (ABSTRACTION_AUDIT.md A5). `null` hides the icon and the repo link

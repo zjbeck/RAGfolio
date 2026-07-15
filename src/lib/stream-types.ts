@@ -25,9 +25,16 @@ interface RagEventBase {
   ts: number;
 }
 
+export type Topicality = "on-topic" | "off-topic" | "adversarial";
+
 export type RagEvent = RagEventBase &
   (
-    | { node: "Analyze"; intent: string | null; filter: FacetFilter | null }
+    | {
+        node: "Analyze";
+        intent: string | null;
+        topicality: Topicality | null;
+        filter: FacetFilter | null;
+      }
     | {
         node: "Filter";
         filter: FacetFilter | null;
@@ -39,6 +46,7 @@ export type RagEvent = RagEventBase &
     | { node: "Route"; route: "answer" | "refuse" }
     | { node: "Answer"; citations: Citation[]; usage: NodeUsage | null }
     | { node: "Refuse"; filter: FacetFilter | null; matchCount: number }
+    | { node: "Redirect"; topicality: "off-topic" | "adversarial" }
   );
 
 export type RagNodeName = RagEvent["node"];

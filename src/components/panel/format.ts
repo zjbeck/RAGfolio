@@ -26,6 +26,7 @@ export function pipelineData(
     case "Analyze": {
       const e = byNode.Analyze;
       if (!e) return null;
+      if (e.topicality && e.topicality !== "on-topic") return e.topicality;
       const intent = e.intent ?? "—";
       return e.filter ? `${intent} · ${facetData(e.filter)}` : intent;
     }
@@ -59,6 +60,10 @@ export function pipelineData(
     case "Refuse": {
       const e = byNode.Refuse;
       return e ? "0 sources" : null;
+    }
+    case "Redirect": {
+      const e = byNode.Redirect;
+      return e ? e.topicality : null;
     }
   }
 }

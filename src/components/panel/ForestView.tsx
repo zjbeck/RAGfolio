@@ -50,12 +50,21 @@ export function ForestView({
   forest,
   retrievedDocIds,
   queried,
+  insufficient,
   displayMode = "onSelect",
 }: {
   forest: ForestData;
   retrievedDocIds: Set<string>;
-  /** Whether a query has run yet — gates the neutral vs retrieved/dimmed states. */
+  /** Whether Retrieve has actually run yet — gates the neutral vs retrieved/dimmed states. */
   queried: boolean;
+  /**
+   * Grade judged the retrieved chunks insufficient (the pipeline refused).
+   * Distinguishes "retrieved but didn't hold the answer" from "confirmed
+   * relevant" (V2 Phase 5 task 2) — without this, a retrieved-but-refused doc
+   * would show the same confident accent styling as a doc the answer was
+   * actually drawn from, contradicting the refusal text.
+   */
+  insufficient: boolean;
   displayMode?: ForestDisplayMode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -172,14 +181,21 @@ export function ForestView({
               <div className="flex flex-wrap gap-1.5">
                 {docs.map((doc) => {
                   const id = docId(doc);
-                  const retrieved = queried && retrievedDocIds.has(id);
+                  const wasRetrieved = queried && retrievedDocIds.has(id);
+                  const confirmed = wasRetrieved && !insufficient;
+                  const consideredInsufficient = wasRetrieved && insufficient;
                   const dimmed = queried && !retrievedDocIds.has(id);
                   const isSelected = selected === id;
-                  const stateClass = retrieved
-                    ? "border-accent bg-accent-soft text-ink"
-                    : dimmed
-                      ? "border-dim-line text-dim-ink hover:text-ink"
-                      : "border-line text-ink hover:border-line-strong"; // neutral: pre-query baseline
+                  const stateClass = confirmed
+                    ? "border-accent bg-accent-soft text-ink" // the answer was actually drawn from this doc
+                    : consideredInsufficient
+                      ? "border-accent text-muted" // in the candidate set, but Grade said it didn't hold the answer —
+                        // accent-hued outline (no fill) so it reads as "considered," never confusable with
+                        // dimmed: border-line-strong and border-dim-line are the same hex in both palettes
+                        // (globals.css), which would have made this indistinguishable from "never retrieved"
+                      : dimmed
+                        ? "border-dim-line text-dim-ink hover:text-ink" // never retrieved at all
+                        : "border-line text-ink hover:border-line-strong"; // neutral: pre-query baseline
                   return (
                     <button
                       key={id}
@@ -232,6 +248,10 @@ export function ForestView({
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm border border-accent bg-accent-soft" />
           {copy.panel.forest.retrieved}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm border border-accent" />
+          {copy.panel.forest.insufficient}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm border border-dim-line" />

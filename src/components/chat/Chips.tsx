@@ -1,21 +1,23 @@
 "use client";
 
-import corpusConfig from "@config";
-
 /**
- * Suggested-prompt chips. Content comes from corpus.config.ts; they persist
- * across the landing→active transition (spec). Picking one sends it.
+ * Suggested-prompt chips, derived server-side from the real corpus (see
+ * getSuggestedPrompts) rather than static config copy. Landing-only — they
+ * collapse once the thread goes active (V2 Phase 5 task 4), rather than
+ * persisting through an ongoing conversation.
  */
 export function Chips({
+  prompts,
   onPick,
   disabled,
 }: {
+  prompts: string[];
   onPick: (prompt: string) => void;
   disabled: boolean;
 }) {
   return (
     <div className="flex flex-wrap justify-center gap-2">
-      {corpusConfig.suggestedPrompts.map((prompt) => (
+      {prompts.map((prompt) => (
         <button
           key={prompt}
           type="button"

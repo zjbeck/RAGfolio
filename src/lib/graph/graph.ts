@@ -5,6 +5,7 @@ import {
   filterChunks,
   grade,
   makeAnswer,
+  redirect,
   refuse,
   retrieve,
   route,
@@ -17,13 +18,21 @@ export interface GraphOptions {
 }
 
 /**
- * The six-node pipeline:
+ * The pipeline:
  *
- *   analyze → filter → retrieve → grade → route ─┬→ answer → END
- *                                                └→ refuse → END
+ *   analyze ─┬→ (off-topic/adversarial) → redirect → END
+ *            └→ (on-topic) → filter → retrieve → grade → route ─┬→ answer → END
+ *                                                                └→ refuse → END
  *
  * Route is a real node (it records the decision into state, visible in the
- * update stream); the conditional edge after it just reads that decision.
+ * update stream); the conditional edges after Analyze and Route just read the
+ * decisions those nodes already recorded. Off-topic/adversarial questions
+ * short-circuit straight from Analyze to Redirect (V2 Phase 5 task 1) —
+ * Filter, Retrieve, Grade, Route, and Answer never run, cutting one LLM call
+ * total instead of two or three, and answering honestly rather than
+ * stretching Refuse's "searched and found nothing" framing over a question
+ * that was never about the corpus in the first place.
+ *
  * Stream with `streamMode: ["updates", "messages"]` — one stream carries
  * node-level updates for the panel and LLM tokens for the chat. (LangGraph v1
  * replaced the spec's streamEvents with stream modes; flagged in CLAUDE.md.)
@@ -46,8 +55,13 @@ export function buildGraph(options: GraphOptions = {}) {
     .addNode("Route", route)
     .addNode("Answer", makeAnswer(answerThinkingBudget))
     .addNode("Refuse", refuse)
+    .addNode("Redirect", redirect)
     .addEdge(START, "Analyze")
-    .addEdge("Analyze", "Filter")
+    .addConditionalEdges(
+      "Analyze",
+      (state) => (state.topicality === "on-topic" ? "Filter" : "Redirect"),
+      ["Filter", "Redirect"]
+    )
     .addEdge("Filter", "Retrieve")
     .addEdge("Retrieve", "Grade")
     .addEdge("Grade", "Route")
@@ -58,5 +72,6 @@ export function buildGraph(options: GraphOptions = {}) {
     )
     .addEdge("Answer", END)
     .addEdge("Refuse", END)
+    .addEdge("Redirect", END)
     .compile();
 }

@@ -52,11 +52,6 @@ const corpusConfig: CorpusConfig = {
   // facet is mandatory unless you list its key here.
   requiredFacets: [],
 
-  suggestedPrompts: [
-    "What's covered in the guides?",
-    "How is this site built?",
-  ],
-
   // Your repo, shown as the GitHub icon in the nav and linked from
   // how-it-works. null hides the icon and link entirely — there's no
   // sensible default, so this starts null rather than pointing at the

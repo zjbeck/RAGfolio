@@ -62,12 +62,17 @@ export const PIPELINE_NODES: RagNodeName[] = [
 ];
 
 /**
- * The six steps for a given turn, swapping the sixth for Refuse when the
- * pipeline declined to answer. Shared by SequenceView (what renders) and
- * RagSteps' aria-live announcer (what screen readers hear), so the two never
- * disagree about which step is "last."
+ * The steps for a given turn: two (Analyze → Redirect) when Analyze decided
+ * the question is off-topic/adversarial and the rest of the pipeline never
+ * ran (V2 Phase 5 task 1); otherwise the full six, swapping the sixth for
+ * Refuse when the pipeline declined to answer. Shared by SequenceView (what
+ * renders) and RagSteps' aria-live announcer (what screen readers hear), so
+ * the two never disagree about which step is "last."
  */
 export function stepsForTurn(turn: RagTurn): RagNodeName[] {
+  if (turn.byNode.Analyze && turn.byNode.Analyze.topicality !== "on-topic") {
+    return ["Analyze", "Redirect"];
+  }
   const lastStep: RagNodeName = turn.byNode.Route?.route === "refuse" ? "Refuse" : "Answer";
   return [...PIPELINE_NODES.slice(0, 5), lastStep];
 }

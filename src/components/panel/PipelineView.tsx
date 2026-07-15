@@ -61,6 +61,7 @@ function Arrow({ dim }: { dim: boolean }) {
  */
 export function PipelineView({ turn }: { turn: RagTurn }) {
   const routed = turn.byNode.Route?.route;
+  const redirectActive = Boolean(turn.byNode.Redirect);
   const answerActive = Boolean(turn.byNode.Answer) || routed === "answer";
   const refuseActive = Boolean(turn.byNode.Refuse) || routed === "refuse";
 
@@ -76,11 +77,15 @@ export function PipelineView({ turn }: { turn: RagTurn }) {
           </div>
         ))}
 
-        {/* Route → { Answer, Refuse } branch. */}
-        <Arrow dim={!routed} />
+        {/* Route → { Answer, Refuse } branch, plus Redirect — Analyze's own
+            off-topic/adversarial short-circuit, which bypasses everything
+            from Filter through Route (V2 Phase 5 task 1). Always shown, like
+            Answer/Refuse, so a short-circuited run has somewhere to land. */}
+        <Arrow dim={!routed && !redirectActive} />
         <div className="flex flex-col gap-2">
           <NodeCard node="Answer" turn={turn} active={answerActive} />
           <NodeCard node="Refuse" turn={turn} active={refuseActive} />
+          <NodeCard node="Redirect" turn={turn} active={redirectActive} />
         </div>
       </div>
     </div>

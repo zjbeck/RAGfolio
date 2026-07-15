@@ -92,6 +92,15 @@ export const copy = {
      * behavior on a demo rather than the site being broken.
      */
     quotaExceeded: "This demo has hit its usage limit for today — try again later.",
+    /**
+     * Off-topic/adversarial short-circuit (V2 Phase 5 task 1) — distinct from
+     * refusalTag/the Refuse node's message, which means "I searched the corpus
+     * and found nothing." These mean the question was never sent to search at
+     * all.
+     */
+    offTopicRedirect: `I only answer questions about ${corpusConfig.siteName}'s own corpus — try asking about what's in the collections above.`,
+    adversarialRedirect:
+      "I can't help with that. Ask me something about this site's corpus instead.",
   },
 
   /** The RAG Panel and its two zones. */
@@ -132,11 +141,14 @@ export const copy = {
         "Writes a reply grounded only in the kept sections, citing each source it uses.",
       Refuse:
         "Says the answer isn't in the docs and names what was searched — no guessing.",
+      Redirect:
+        "Answers honestly that this question is outside what the site covers, without searching the corpus.",
     } as Record<RagNodeName, string>,
     forest: {
       open: "Open document ↗",
       neutral: "Not yet searched",
       retrieved: "Retrieved — matched this question",
+      insufficient: "Retrieved, but didn't hold the answer",
       notRetrieved: "Searched, not retrieved",
       crossLink:
         "A line connects a claim to the evidence doc it cites. Hover or select a document to reveal its links.",
@@ -155,6 +167,7 @@ export const copy = {
       Route: "Route",
       Answer: "Answer",
       Refuse: "Refuse",
+      Redirect: "Redirect",
     } as Record<RagNodeName, string>,
   },
 

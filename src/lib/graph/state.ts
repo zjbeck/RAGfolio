@@ -29,6 +29,13 @@ export interface NodeUsage {
  */
 export const PipelineState = new StateSchema({
   question: z.string().default(""),
+  /**
+   * Set by Analyze before Filter/Retrieve run (V2 Phase 5 task 1). Only
+   * "on-topic" proceeds through the rest of the pipeline; "off-topic" and
+   * "adversarial" short-circuit straight to Redirect, skipping Filter,
+   * Retrieve, Grade, Route, and Answer entirely.
+   */
+  topicality: z.enum(["on-topic", "off-topic", "adversarial"]).nullable().default(null),
   intent: z.string().nullable().default(null),
   filter: z.custom<FacetFilter | null>().default(null),
   filterMatchCount: z.number().default(0),
