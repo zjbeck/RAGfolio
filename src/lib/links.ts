@@ -14,6 +14,11 @@ export function docHref(
   return anchorId ? `${base}#${anchorId}` : base;
 }
 
+/** A collection's own index page. */
+export function collectionHref(collection: string): string {
+  return `/docs/${collection}`;
+}
+
 export function citationHref(citation: Citation): string {
   return docHref(citation.collection, citation.docSlug, citation.anchorId);
 }

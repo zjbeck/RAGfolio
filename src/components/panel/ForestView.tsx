@@ -242,19 +242,19 @@ export function ForestView({
           what each state means and what the cross-link lines represent. */}
       <div className="mt-3 space-y-1.5 text-[11px] text-muted">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm border border-line" />
+          <span className="h-2.5 w-4 rounded-[2px] border border-line" />
           {copy.panel.forest.neutral}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm border border-accent bg-accent-soft" />
+          <span className="h-2.5 w-4 rounded-[2px] border border-accent bg-accent-soft" />
           {copy.panel.forest.retrieved}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm border border-accent" />
+          <span className="h-2.5 w-4 rounded-[2px] border border-accent" />
           {copy.panel.forest.insufficient}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm border border-dim-line" />
+          <span className="h-2.5 w-4 rounded-[2px] border border-dim-line" />
           {copy.panel.forest.notRetrieved}
         </span>
         <p className="pt-1 text-dim-ink">{copy.panel.forest.crossLink}</p>

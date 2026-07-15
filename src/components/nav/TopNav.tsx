@@ -56,6 +56,7 @@ export function TopNav({ tabs }: { tabs: NavTab[] }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={copy.nav.github}
+            title={copy.nav.github}
             className="text-muted hover:text-ink"
           >
             <GitHubIcon />

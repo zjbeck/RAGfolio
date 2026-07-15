@@ -85,3 +85,12 @@ function groqChatModel(): BaseChatModel {
 export function chatModel(thinkingBudget: number): BaseChatModel {
   return LLM_PROVIDER === "groq" ? groqChatModel() : geminiChatModel(thinkingBudget);
 }
+
+/**
+ * The actually-active chat model, for the credential badge (V2 Phase 6 task
+ * 2) — reflects LLM_PROVIDER, not a hardcoded string, so the badge stays
+ * honest across the Gemini/Groq seam Phase 1 introduced.
+ */
+export function activeChatModel(): string {
+  return LLM_PROVIDER === "groq" ? GROQ_CHAT_MODEL : GEMINI_CHAT_MODEL;
+}

@@ -26,9 +26,12 @@ export function pipelineData(
     case "Analyze": {
       const e = byNode.Analyze;
       if (!e) return null;
-      if (e.topicality && e.topicality !== "on-topic") return e.topicality;
+      if (e.topicality && e.topicality !== "on-topic") return `topicality: ${e.topicality}`;
       const intent = e.intent ?? "—";
-      return e.filter ? `${intent} · ${facetData(e.filter)}` : intent;
+      // Always labeled ("intent: X"), matching Grade's "verdict: X" and
+      // Route's "→ X" — a bare value here (V2 Phase 6 task 1) was the one
+      // node box that didn't say what the value it showed actually was.
+      return e.filter ? `intent: ${intent} · ${facetData(e.filter)}` : `intent: ${intent}`;
     }
     case "Filter": {
       const e = byNode.Filter;

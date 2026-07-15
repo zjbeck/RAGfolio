@@ -26,9 +26,15 @@ export function Message({
   const text = messageText(message);
 
   if (message.role === "user") {
+    // bg-surface-2 (V2 Phase 6 task 1), not bg-accent-soft — the same fill
+    // the forest's confirmed/retrieved state and the refusal tag now use for
+    // "this is a notable, interactive-adjacent thing." A plain message bubble
+    // shouldn't share that visual vocabulary with things that respond to
+    // hover/click; surface-2 is the same static-content fill DocView's raw
+    // chunk boxes use.
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-[var(--radius)] bg-accent-soft px-3.5 py-2 text-sm text-ink">
+        <div className="max-w-[85%] rounded-[var(--radius)] bg-surface-2 px-3.5 py-2 text-sm text-ink">
           {text}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import corpusConfig from "@config";
-import type { FacetFilter } from "@/lib/corpus/types";
+import type { CollectionConfig, FacetFilter } from "@/lib/corpus/types";
+import { collectionHref } from "@/lib/links";
 import type { RagNodeName } from "@/lib/stream-types";
 
 /**
@@ -60,6 +61,14 @@ export const copy = {
     footnote:
       "Answers are generated only from the portfolio corpus and always cite sources.",
   },
+
+  /**
+   * Persistent stack/model credential badge, below the composer in every
+   * state — not a dismissible banner (V2 Phase 6 task 2). model comes from
+   * providers/chat.ts's activeChatModel(), so it stays honest across the
+   * Gemini/Groq seam rather than naming one hardcoded provider.
+   */
+  credential: (model: string): string => `Powered by ${model} · LangGraph · RAGfolio`,
 
   /**
    * Active chat composition (after the first question). The pipeline
@@ -191,13 +200,23 @@ export const copy = {
 
   /**
    * Honest refusal: names what was searched and stops. Zero fabrication —
-   * this text is templated, never model-generated.
+   * this text is templated, never model-generated. Collection names render
+   * as real markdown links to each collection's index page (V2 Phase 6 task
+   * 1) rather than plain unlinked text — the closing "browse the collections
+   * directly" line meant it literally, but there was nothing to click.
    */
-  refusal: (searchedCollections: string[], filter: FacetFilter | null, matchCount: number): string => {
+  refusal: (
+    searchedCollections: CollectionConfig[],
+    filter: FacetFilter | null,
+    matchCount: number
+  ): string => {
+    const linked = searchedCollections
+      .map((c) => `[${c.label}](${collectionHref(c.slug)})`)
+      .join(", ");
     const scope =
       !filter || Object.keys(filter).length === 0
-        ? `all collections (${searchedCollections.join(", ")})`
-        : `${searchedCollections.join(", ")}, filtered to ${describeFilter(filter)} (${matchCount} matching ${matchCount === 1 ? "section" : "sections"})`;
+        ? `all collections (${linked})`
+        : `${linked}, filtered to ${describeFilter(filter)} (${matchCount} matching ${matchCount === 1 ? "section" : "sections"})`;
     return (
       `I couldn't find an answer to that in the docs. I searched ${scope}, ` +
       `and nothing there addresses your question — rather than guess, I'll say so. ` +

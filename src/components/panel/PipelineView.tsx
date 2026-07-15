@@ -15,23 +15,37 @@ function NodeCard({
   node,
   turn,
   active,
+  showPending = true,
 }: {
   node: RagNodeName;
   turn: RagTurn;
   active: boolean;
+  /**
+   * Whether to show an empty "pending" data box while this node hasn't fired.
+   * true for the linear nodes (Analyze…Route) — "—" there honestly means
+   * "hasn't happened yet, but will." false for the terminal branch nodes
+   * (Answer/Refuse/Redirect): at most one of the three ever fires for a given
+   * turn, so the other two showing a permanent empty box was a ghost, not a
+   * "not yet" state (V2 Phase 6 task 1) — those render label-only when inactive.
+   */
+  showPending?: boolean;
 }) {
   const data = pipelineData(node, turn.byNode);
+  const label = (
+    <div
+      className={`rounded-[var(--radius-sm)] px-2.5 py-1 text-xs font-medium ${
+        active ? "bg-accent text-on-accent" : "border border-dim-line text-dim-ink"
+      }`}
+    >
+      {copy.panel.nodeLabels[node]}
+    </div>
+  );
+  if (!active && !showPending) {
+    return <div className="flex flex-col items-center gap-1.5">{label}</div>;
+  }
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <div
-        className={`rounded-[var(--radius-sm)] px-2.5 py-1 text-xs font-medium ${
-          active
-            ? "bg-accent text-on-accent"
-            : "border border-dim-line text-dim-ink"
-        }`}
-      >
-        {copy.panel.nodeLabels[node]}
-      </div>
+      {label}
       <div
         className={`w-[80px] rounded-[var(--radius-sm)] border px-1 py-1 text-center font-mono text-[10px] leading-tight ${
           active
@@ -83,9 +97,9 @@ export function PipelineView({ turn }: { turn: RagTurn }) {
             Answer/Refuse, so a short-circuited run has somewhere to land. */}
         <Arrow dim={!routed && !redirectActive} />
         <div className="flex flex-col gap-2">
-          <NodeCard node="Answer" turn={turn} active={answerActive} />
-          <NodeCard node="Refuse" turn={turn} active={refuseActive} />
-          <NodeCard node="Redirect" turn={turn} active={redirectActive} />
+          <NodeCard node="Answer" turn={turn} active={answerActive} showPending={false} />
+          <NodeCard node="Refuse" turn={turn} active={refuseActive} showPending={false} />
+          <NodeCard node="Redirect" turn={turn} active={redirectActive} showPending={false} />
         </div>
       </div>
     </div>

@@ -25,9 +25,11 @@ import { Thread } from "./Thread";
 export function ChatApp({
   forest,
   suggestedPrompts,
+  chatModel,
 }: {
   forest: ForestData;
   suggestedPrompts: string[];
+  chatModel: string;
 }) {
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
@@ -71,6 +73,11 @@ export function ChatApp({
   const activeFootnote = (
     <p className="text-center text-xs text-muted">{copy.activeThread.footnote}</p>
   );
+  // Persistent chrome directly below the composer in every state (V2 Phase 6
+  // task 2) — never conditional on `active`, and no dismiss control, per spec.
+  const credentialBadge = (
+    <p className="text-center text-[11px] text-dim-ink">{copy.credential(chatModel)}</p>
+  );
 
   // ── Narrow, active: single column; panel stacks beneath the thread. ─────────
   if (active && !wide) {
@@ -98,6 +105,7 @@ export function ChatApp({
         <div className="mx-auto w-full max-w-2xl space-y-3 px-5 pb-5 pt-2">
           {errorNote}
           {composer}
+          {credentialBadge}
           {activeFootnote}
         </div>
       </div>
@@ -128,6 +136,7 @@ export function ChatApp({
             <div className="space-y-3 pb-5 pt-2">
               {errorNote}
               {composer}
+              {credentialBadge}
               {activeFootnote}
             </div>
           </>
@@ -137,6 +146,7 @@ export function ChatApp({
               {copy.greeting}
             </h1>
             {composer}
+            {credentialBadge}
             <Chips prompts={suggestedPrompts} onPick={send} disabled={busy} />
             <p className="mx-auto max-w-md text-center text-xs text-muted">
               {copy.landing.footnote}

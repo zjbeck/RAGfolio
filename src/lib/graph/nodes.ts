@@ -339,9 +339,8 @@ export function makeAnswer(thinkingBudget: number) {
 // searched (collections + filter + match count). Zero fabrication.
 
 export async function refuse(state: PipelineStateType): Promise<StateUpdate> {
-  const searchedCollections = corpusConfig.collections.map((c) => c.label);
   return {
-    answer: copy.refusal(searchedCollections, state.filter, state.filterMatchCount),
+    answer: copy.refusal(corpusConfig.collections, state.filter, state.filterMatchCount),
     citations: [],
   };
 }
