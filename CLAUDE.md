@@ -24,13 +24,17 @@ Flagged so far:
    (same functionality; Node.js runtime by default; exports a `proxy`
    function). The password gate lives in `src/proxy.ts`.
 3. **Groq model choice, V2 Phase 1.** A web search claimed
-   `llama-3.3-70b-versatile` is deprecated on Groq; Groq's own docs page
-   (`console.groq.com/docs/models`, fetched live 2026-07-14) still lists it
-   under "Production Models" with no deprecation notice — that specific claim
-   is unconfirmed, not resolved. `openai/gpt-oss-120b` was picked instead
-   because it sidesteps the ambiguity (LangChain's own ChatGroq integration
-   docs use it as their canonical example) rather than because the
-   alternative was disproven.
+   `llama-3.3-70b-versatile` is deprecated on Groq; `console.groq.com/docs/models`
+   (fetched live 2026-07-14) still listed it under "Production Models" with no
+   deprecation notice, which read as unconfirmed — but that page doesn't carry
+   deprecation notices at all. **Confirmed 2026-07-14 against
+   `console.groq.com/docs/deprecations`** (a separate page, checked on a
+   follow-up pass): `llama-3.3-70b-versatile` is scheduled for shutdown
+   **08/16/26**, with `openai/gpt-oss-120b` listed as one of its own two
+   recommended replacements. `gpt-oss-120b` was already the choice going in
+   (LangChain's ChatGroq docs use it as their canonical example); this
+   confirms it was also the forward-looking one, not merely an ambiguity
+   sidestep.
 
 ### Research-first
 Consult current docs before writing integration code — training data is stale.
@@ -141,8 +145,10 @@ with its own module under `src/lib/providers/`.
     line and every entry point (the Next server, `scripts/ask.ts`,
     `scripts/eval.ts`) throws immediately on import, naming the fix.
   - Gemini: `gemini-3.5-flash` (unchanged), key `GEMINI_CHAT_API_KEY`.
-  - Groq: `openai/gpt-oss-120b` (see the Research-first flag above for why),
-    key `GROQ_API_KEY` (LangChain's own default lookup name for `ChatGroq`,
+  - Groq: `openai/gpt-oss-120b` — confirmed, not just picked-and-hoped: it's
+    Groq's own listed replacement for `llama-3.3-70b-versatile` (shutting
+    down 08/16/26, per the Research-first flag above), key `GROQ_API_KEY`
+    (LangChain's own default lookup name for `ChatGroq`,
     verified against `docs.langchain.com/oss/javascript/integrations/chat/groq`
     2026-07-14 — passed explicitly rather than relying on the SDK's implicit
     lookup, for the same reason `nodes.ts` always did this for Gemini: a
