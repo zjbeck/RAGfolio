@@ -360,6 +360,82 @@ UI redesign that only compiles hasn't actually been verified.
   offset (`+{ms}`) on every line — verified live against a real run's actual
   numbers (e.g. `Grade +3132ms (Δ2654ms)`), not just that the code compiles.
 
+## V2 Phase 5 — Conversation & Pipeline Behavior
+
+All five implemented changes below were live-verified with real pipeline
+runs (an off-topic question and a plausible-but-unanswerable on-topic one),
+not just type-checked. Task 6 required no change — see its own entry.
+
+- **Off-topic/adversarial short-circuit.** `PipelineState` gains
+  `topicality: "on-topic" | "off-topic" | "adversarial"`, set by Analyze
+  alongside `intent`/`filter`. A new conditional edge right after Analyze
+  routes anything not `"on-topic"` straight to a new `Redirect` node —
+  Filter, Retrieve, Grade, Route, and Answer never run. Redirect is
+  templated from `copy.chat.offTopicRedirect`/`adversarialRedirect` (zero
+  fabrication, same discipline as Refuse), distinct wording for the two
+  cases since they're different situations, not the same message twice.
+  `stepsForTurn` (`rag-turn.ts`) shows a 2-step Sequence (`Analyze` →
+  `Redirect`) instead of the misleading full 6-step list with steps 2–5
+  stuck "pending" forever. `PipelineView` adds `Redirect` as a third
+  always-shown branch alongside Answer/Refuse. **Live-verified**: "What's
+  the capital of France?" → only Analyze + Redirect fired (both boxes
+  showed `off-topic`), the honest redirect text rendered, and one LLM call
+  total instead of two or three.
+- **Refusal state coherence (forest ↔ answer text).** Before this, a doc
+  Retrieve found stayed in the confident "retrieved" accent state even after
+  Grade judged the chunks insufficient and the pipeline refused — the panel
+  visually implied relevance the answer text was actively denying. Fixed
+  with a genuine 4th node state: `ForestView` takes a new `insufficient:
+  boolean` prop (`RetrievalGraph` passes `Boolean(turn.byNode.Refuse)`).
+  A retrieved-but-refused doc now renders `border-accent` with **no**
+  `bg-accent-soft` fill and `text-muted` — accent-hued so it still reads as
+  "this was a candidate," but visually distinct from the filled/confirmed
+  state. First attempt used `border-line-strong`, which **live inspection
+  caught** as identical to `border-dim-line` in both palettes (`globals.css`
+  literally shares one hex between the two tokens) — would have made
+  "retrieved but insufficient" indistinguishable from "never retrieved."
+  Corrected before committing.
+  ⚠️ Also corrected in the same pass: `queried` (the neutral vs.
+  retrieved/dimmed gate) changed from `turn.started` to
+  `Boolean(turn.byNode.Retrieve)` — the former flipped the forest into the
+  dimmed baseline the instant Analyze fired, before Retrieve had actually
+  run, which is also now what correctly keeps the forest neutral for an
+  off-topic short-circuit (Retrieve never runs, so nothing should read as
+  "searched, not found"). **Live-verified** both paths: the off-topic run's
+  forest showed all 5 docs neutral; the refusal run showed exactly the 3
+  retrieved docs in the new outlined-accent state, 2 untouched docs dimmed.
+- **Thread bottom-anchored.** `Thread.tsx`'s wrapper changed from `flex
+  flex-col gap-6` to `flex min-h-full flex-col justify-end gap-6` — flexbox
+  only overrides alignment when content is shorter than the scroll
+  container, never message order, so a short conversation sits near the
+  input and a long one still scrolls normally top-to-bottom.
+- **Suggested prompts, corpus-derived.** `corpus.config.ts`'s static
+  `suggestedPrompts: string[]` field is gone entirely (dead once its
+  replacement landed) — a new `getSuggestedPrompts()` in `server-data.ts`
+  derives one prompt per collection from that collection's first doc title
+  (`What does "{title}" cover?`), capped at 4. Computed server-side in
+  `page.tsx`, threaded through `ChatApp` → `Chips` as a prop. Chips now
+  render **landing-only** — removed from both active-state layouts, so they
+  collapse after the first exchange rather than persisting through an
+  ongoing conversation. **Live-verified**: 4 chips derived from the real
+  scaffold's actual doc titles, gone immediately after sending a message.
+- **"NOT IN THE DOCS" re-weighted.** The refusal tag was
+  `border-line`/`text-muted` — barely distinguishable from ordinary UI
+  chrome, for a site whose core thesis is honest refusal. Now
+  `border-accent bg-accent-soft text-ink` with `font-semibold` (reusing the
+  forest's already-AA-verified "retrieved" combination, not a new,
+  unverified color) — genuinely more prominent. Live-verified against a
+  real refusal.
+- **Task 6 (full-pipeline loading indicator): no change made — already
+  satisfied.** `Message.tsx`'s `!text && streaming` condition already spans
+  the entire pre-Answer phase, not just token-streaming, since no text
+  exists until Answer/Refuse/Redirect's first write. Confirmed against two
+  independent live runs: "Searching the corpus…" stayed visible through a
+  real Grade step that took 2654ms (captured in the Raw Trace as `Grade
+  +3132ms (Δ2654ms)`) and through the refusal-path rerun. Modifying working
+  code to satisfy an already-met requirement would have been needless
+  churn.
+
 ## Decisions (spec was silent; boring option chosen)
 - **Package manager: npm** (pnpm not assumed; stated in README).
 - The spec places the greeting in corpus.config.ts but also says all
